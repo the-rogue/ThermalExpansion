@@ -12,95 +12,91 @@ import cofh.core.CoFHProps;
 import cofh.core.network.PacketCoFHBase;
 import cofh.core.util.fluid.FluidTankAdv;
 import cofh.lib.util.TimeTracker;
+import cofh.lib.util.helpers.AugmentHelper;
 import cofh.lib.util.helpers.BlockHelper;
 import cofh.lib.util.helpers.EnergyHelper;
 import cofh.lib.util.helpers.MathHelper;
 import cofh.lib.util.helpers.RedstoneControlHelper;
 import cofh.lib.util.helpers.ServerHelper;
-import cofh.lib.util.helpers.StringHelper;
-import cofh.thermalexpansion.ThermalExpansion;
 import cofh.thermalexpansion.block.TileRSControl;
+import cofh.thermalexpansion.core.TEProps;
 import cofh.thermalexpansion.item.TEAugments;
-import cofh.thermalexpansion.util.Utils;
-import cpw.mods.fml.relauncher.Side;
 
-import net.minecraft.entity.Entity;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.ISidedInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.ITickable;
+import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidContainerRegistry;
-import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fml.relauncher.Side;
 
-public abstract class TileDynamoBase extends TileRSControl implements IEnergyProvider, IAugmentable, IEnergyInfo, IReconfigurableFacing, ISidedInventory {
+public abstract class TileDynamoBase extends TileRSControl implements IEnergyProvider, IAugmentable, IEnergyInfo, IReconfigurableFacing, ISidedInventory,
+ITickable {
 
-	public static void configure() {
+	protected static final EnergyConfig[] DEFAULT_ENERGY_CONFIG = new EnergyConfig[BlockDynamo.Type.values().length];
+	public static final boolean[] SECURITY = new boolean[BlockDynamo.Type.values().length];
 
-		String comment = "Enable this to allow for Dynamos to be securable.";
-		enableSecurity = ThermalExpansion.config.get("Security", "Dynamo.All.Securable", enableSecurity, comment);
-
-		for (int i = 0; i < BlockDynamo.Types.values().length; i++) {
-			String name = StringHelper.titleCase(BlockDynamo.NAMES[i]);
-			int maxPower = MathHelper.clamp(ThermalExpansion.config.get("Dynamo." + name, "BasePower", 80), 10, 160);
-			ThermalExpansion.config.set("Dynamo." + name, "BasePower", maxPower);
-			maxPower /= 10;
-			maxPower *= 10;
-			defaultEnergyConfig[i] = new EnergyConfig();
-			defaultEnergyConfig[i].setParamsDefault(maxPower);
-		}
-	}
-
-	public static boolean enableSecurity = true;
-
-	protected static final EnergyConfig[] defaultEnergyConfig = new EnergyConfig[BlockDynamo.Types.values().length];
-
+	protected static final int FUEL_MOD = 100;
 	protected static final int MAX_FLUID = FluidContainerRegistry.BUCKET_VOLUME * 4;
-	protected static final int[] SLOTS = { 0 };
-
-	public static final int FUEL_MOD = 100;
+	protected static final int SLOTS[] = { 0 };
 
 	int compareTracker;
 	int fuelRF;
-	byte facing = 1;
 	boolean wasActive;
-
-	public boolean augmentRedstoneControl;
-	public boolean augmentThrottle;
-	public boolean augmentCoilDuct;
-
-	boolean cached = false;
+	boolean cached;
 	IEnergyReceiver adjacentHandler = null;
 
-	protected EnergyStorage energyStorage = new EnergyStorage(0);
-	protected EnergyConfig config;
+	protected final byte type;
+	protected EnergyConfig energyConfig;
 	protected TimeTracker tracker = new TimeTracker();
+
+	protected byte facing = 1;
+	protected EnergyStorage energyStorage = new EnergyStorage(0);
+
+	int energyMod = 1;
+	int fuelMod = FUEL_MOD;
 
 	/* Augment Variables */
 	ItemStack[] augments = new ItemStack[4];
 	boolean[] augmentStatus = new boolean[4];
 
-	int energyMod = 1;
-	int fuelMod = FUEL_MOD;
+	public boolean augmentRedstoneControl;
+	public boolean augmentThrottle;
+	public boolean augmentCoilDuct;
 
 	public TileDynamoBase() {
 
-		config = defaultEnergyConfig[getType()];
-		energyStorage = new EnergyStorage(config.maxEnergy, config.maxPower * 2);
+		this(BlockDynamo.Type.STEAM);
+		if (getClass() != TileDynamoBase.class) {
+			throw new IllegalArgumentException();
+		}
+	}
+
+	public TileDynamoBase(BlockDynamo.Type type) {
+
+		this.type = (byte) type.ordinal();
+
+		energyConfig = DEFAULT_ENERGY_CONFIG[this.type].copy();
+		energyStorage = new EnergyStorage(energyConfig.maxEnergy, energyConfig.maxPower * 2);
+
 	}
 
 	@Override
 	public String getName() {
 
-		return "tile.thermalexpansion.dynamo." + BlockDynamo.NAMES[getType()] + ".name";
+		return "tile.thermalexpansion.dynamo." + BlockDynamo.Type.byMetadata(type).getName() + ".name";
 	}
 
 	@Override
-	public int getComparatorInput(int side) {
+	public int getComparatorInputOverride() {
 
 		return compareTracker;
 	}
@@ -108,19 +104,19 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 	@Override
 	public int getLightValue() {
 
-		return isActive ? 7 : 0;
+		return isActive ? BlockDynamo.Type.values()[type].getLight() : 0;
 	}
 
 	@Override
 	public boolean enableSecurity() {
 
-		return enableSecurity;
+		return SECURITY[type];
 	}
 
 	@Override
-	public boolean onWrench(EntityPlayer player, int hitSide) {
+	public boolean onWrench(EntityPlayer player, EnumFacing side) {
 
-		rotateBlock();
+		rotateBlock(side);
 		return true;
 	}
 
@@ -129,7 +125,7 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 
 		byte oldFacing = facing;
 		for (int i = facing + 1, e = facing + 6; i < e; i++) {
-			if (EnergyHelper.isAdjacentEnergyReceiverFromSide(this, i % 6)) {
+			if (EnergyHelper.isAdjacentEnergyReceiverFromSide(this, EnumFacing.VALUES[i % 6])) {
 				facing = (byte) (i % 6);
 				if (facing != oldFacing) {
 					updateAdjacentHandlers();
@@ -141,6 +137,13 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 	}
 
 	@Override
+	public void invalidate() {
+
+		cached = false;
+		super.invalidate();
+	}
+
+	@Override
 	public void onNeighborBlockChange() {
 
 		super.onNeighborBlockChange();
@@ -148,9 +151,9 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 	}
 
 	@Override
-	public void onNeighborTileChange(int tileX, int tileY, int tileZ) {
+	public void onNeighborTileChange(BlockPos pos) {
 
-		super.onNeighborTileChange(tileX, tileY, tileZ);
+		super.onNeighborTileChange(pos);
 		updateAdjacentHandlers();
 	}
 
@@ -158,66 +161,6 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 
 		energyStorage.setEnergyStored(quantity);
 	}
-
-	@Override
-	public void updateEntity() {
-
-		if (ServerHelper.isClientWorld(worldObj)) {
-			return;
-		}
-		if (!cached) {
-			onNeighborBlockChange();
-		}
-		boolean curActive = isActive;
-
-		if (isActive) {
-			if (redstoneControlOrDisable() && canGenerate()) {
-				generate();
-				transferEnergy(facing);
-			} else {
-				isActive = false;
-				wasActive = true;
-				tracker.markTime(worldObj);
-			}
-		} else if (redstoneControlOrDisable() && canGenerate()) {
-			isActive = true;
-			generate();
-			transferEnergy(facing);
-		} else {
-			attenuate();
-		}
-		if (timeCheck()) {
-			int curScale = getScaledEnergyStored(15);
-			if (curScale != compareTracker) {
-				compareTracker = curScale;
-				callNeighborTileChange();
-			}
-		}
-		updateIfChanged(curActive);
-	}
-
-	protected void updateIfChanged(boolean curActive) {
-
-		if (curActive != isActive && !wasActive) {
-			updateLighting();
-			sendUpdatePacket(Side.CLIENT);
-		} else if (wasActive && tracker.hasDelayPassed(worldObj, 100)) {
-			wasActive = false;
-			updateLighting();
-			sendUpdatePacket(Side.CLIENT);
-		}
-	}
-
-	@Override
-	public void invalidate() {
-
-		cached = false;
-		super.invalidate();
-	}
-
-	protected abstract boolean canGenerate();
-
-	protected abstract void generate();
 
 	protected int calcEnergy() {
 
@@ -227,13 +170,13 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 		if (augmentThrottle) {
 			return calcEnergyAugment();
 		}
-		if (energyStorage.getEnergyStored() < config.minPowerLevel) {
-			return config.maxPower;
+		if (energyStorage.getEnergyStored() < energyConfig.minPowerLevel) {
+			return energyConfig.maxPower;
 		}
-		if (energyStorage.getEnergyStored() > config.maxPowerLevel) {
-			return config.minPower;
+		if (energyStorage.getEnergyStored() > energyConfig.maxPowerLevel) {
+			return energyConfig.minPower;
 		}
-		return (energyStorage.getMaxEnergyStored() - energyStorage.getEnergyStored()) / config.energyRamp;
+		return (energyStorage.getMaxEnergyStored() - energyStorage.getEnergyStored()) / energyConfig.energyRamp;
 	}
 
 	protected int calcEnergyAugment() {
@@ -241,18 +184,20 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 		if (energyStorage.getEnergyStored() >= energyStorage.getMaxEnergyStored()) {
 			return 0;
 		}
-		if (energyStorage.getEnergyStored() < config.minPowerLevel) {
-			return config.maxPower;
+		if (energyStorage.getEnergyStored() < energyConfig.minPowerLevel) {
+			return energyConfig.maxPower;
 		}
-		if (energyStorage.getEnergyStored() >= energyStorage.getMaxEnergyStored() - config.energyRamp) {
+		if (energyStorage.getEnergyStored() >= energyStorage.getMaxEnergyStored() - energyConfig.energyRamp) {
 			return 1;
 		}
-		return (energyStorage.getMaxEnergyStored() - energyStorage.getEnergyStored()) / config.energyRamp;
+		return (energyStorage.getMaxEnergyStored() - energyStorage.getEnergyStored()) / energyConfig.energyRamp;
 	}
 
-	protected boolean hasStoredEnergy() {
+	protected abstract boolean canGenerate();
 
-		return energyStorage.getEnergyStored() > 0;
+	protected boolean hasEnergy(int energy) {
+
+		return energyStorage.getEnergyStored() >= energy;
 	}
 
 	protected void attenuate() {
@@ -266,12 +211,14 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 		}
 	}
 
-	protected void transferEnergy(int bSide) {
+	protected abstract void generate();
+
+	protected void transferEnergy(EnumFacing side) {
 
 		if (adjacentHandler == null) {
 			return;
 		}
-		energyStorage.modifyEnergyStored(-adjacentHandler.receiveEnergy(ForgeDirection.VALID_DIRECTIONS[bSide ^ 1],
+		energyStorage.modifyEnergyStored(-adjacentHandler.receiveEnergy(side.getOpposite(),
 				Math.min(energyStorage.getMaxExtract(), energyStorage.getEnergyStored()), false));
 	}
 
@@ -280,9 +227,9 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 		if (ServerHelper.isClientWorld(worldObj)) {
 			return;
 		}
-		TileEntity tile = BlockHelper.getAdjacentTileEntity(this, facing);
+		TileEntity tile = BlockHelper.getAdjacentTileEntity(this, EnumFacing.VALUES[facing]);
 
-		if (EnergyHelper.isEnergyReceiverFromSide(tile, ForgeDirection.VALID_DIRECTIONS[facing ^ 1])) {
+		if (EnergyHelper.isAdjacentEnergyReceiverFromSide(tile, EnumFacing.VALUES[facing ^ 1])) {
 			adjacentHandler = (IEnergyReceiver) tile;
 		} else {
 			adjacentHandler = null;
@@ -290,9 +237,16 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 		cached = true;
 	}
 
-	public IIcon getActiveIcon() {
+	protected void updateIfChanged(boolean curActive) {
 
-		return FluidRegistry.WATER.getIcon();
+		if (curActive != isActive && !wasActive) {
+			updateLighting();
+			sendUpdatePacket(Side.CLIENT);
+		} else if (wasActive && tracker.hasDelayPassed(worldObj, 100)) {
+			wasActive = false;
+			updateLighting();
+			sendUpdatePacket(Side.CLIENT);
+		}
 	}
 
 	@Override
@@ -312,6 +266,53 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 		return true;
 	}
 
+	/* ITickable */
+	@Override
+	public void update() {
+
+		if (ServerHelper.isClientWorld(worldObj)) {
+			return;
+		}
+		if (!cached) {
+			onNeighborBlockChange();
+		}
+		boolean curActive = isActive;
+
+		if (isActive) {
+			if (redstoneControlOrDisable() && canGenerate()) {
+				generate();
+				transferEnergy(EnumFacing.VALUES[facing]);
+			} else {
+				isActive = false;
+				wasActive = true;
+				tracker.markTime(worldObj);
+			}
+		} else if (redstoneControlOrDisable() && canGenerate()) {
+			isActive = true;
+			generate();
+			transferEnergy(EnumFacing.VALUES[facing]);
+		} else {
+			attenuate();
+		}
+		if (timeCheck()) {
+			int curScale = getScaledEnergyStored(15);
+			if (curScale != compareTracker) {
+				compareTracker = curScale;
+				callNeighborTileChange();
+			}
+		}
+		updateIfChanged(curActive);
+	}
+
+	/* BLOCK STATE */
+	@Override
+	public IBlockState getExtendedState(IBlockState state, IBlockAccess world, BlockPos pos) {
+
+		IExtendedBlockState exState = (IExtendedBlockState) state;
+
+		return exState.withProperty(TEProps.ACTIVE, isActive).withProperty(TEProps.FACING, EnumFacing.VALUES[facing]);
+	}
+
 	/* GUI METHODS */
 	public IEnergyStorage getEnergyStorage() {
 
@@ -320,7 +321,7 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 
 	public int getScaledEnergyStored(int scale) {
 
-		return energyStorage.getEnergyStored() * scale / energyStorage.getMaxEnergyStored();
+		return MathHelper.round((long) energyStorage.getEnergyStored() * scale / energyStorage.getMaxEnergyStored());
 	}
 
 	public FluidTankAdv getTank(int tankIndex) {
@@ -469,7 +470,7 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 		resetAugments();
 		for (int i = 0; i < augments.length; i++) {
 			augmentStatus[i] = false;
-			if (Utils.isAugmentItem(augments[i])) {
+			if (AugmentHelper.isAugmentItem(augments[i])) {
 				augmentStatus[i] = installAugment(i);
 			}
 		}
@@ -483,7 +484,7 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 	protected boolean hasAugment(String type, int augLevel) {
 
 		for (int i = 0; i < augments.length; i++) {
-			if (Utils.isAugmentItem(augments[i]) && ((IAugmentItem) augments[i].getItem()).getAugmentLevel(augments[i], type) == augLevel) {
+			if (AugmentHelper.isAugmentItem(augments[i]) && ((IAugmentItem) augments[i].getItem()).getAugmentLevel(augments[i], type) == augLevel) {
 				return true;
 			}
 		}
@@ -493,7 +494,7 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 	protected boolean hasDuplicateAugment(String type, int augLevel, int slot) {
 
 		for (int i = 0; i < augments.length; i++) {
-			if (i != slot && Utils.isAugmentItem(augments[i]) && ((IAugmentItem) augments[i].getItem()).getAugmentLevel(augments[i], type) == augLevel) {
+			if (i != slot && AugmentHelper.isAugmentItem(augments[i]) && ((IAugmentItem) augments[i].getItem()).getAugmentLevel(augments[i], type) == augLevel) {
 				return true;
 			}
 		}
@@ -536,7 +537,7 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 			}
 			if (hasAugmentChain(TEAugments.DYNAMO_OUTPUT, augLevel)) {
 				energyMod = Math.max(energyMod, TEAugments.DYNAMO_OUTPUT_MOD[augLevel]);
-				energyStorage.setMaxTransfer(Math.max(energyStorage.getMaxExtract(), config.maxPower * 2 * TEAugments.DYNAMO_OUTPUT_MOD[augLevel]));
+				energyStorage.setMaxTransfer(Math.max(energyStorage.getMaxExtract(), energyConfig.maxPower * 2 * TEAugments.DYNAMO_OUTPUT_MOD[augLevel]));
 				fuelMod -= TEAugments.DYNAMO_OUTPUT_EFFICIENCY_MOD[augLevel];
 				installed = true;
 			} else {
@@ -576,7 +577,7 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 
 		energyMod = 1;
 		fuelMod = FUEL_MOD;
-		energyStorage.setMaxTransfer(config.maxPower * 2);
+		energyStorage.setMaxTransfer(energyConfig.maxPower * 2);
 
 		augmentRedstoneControl = false;
 		augmentThrottle = false;
@@ -585,27 +586,27 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 
 	/* IEnergyProvider */
 	@Override
-	public int extractEnergy(ForgeDirection from, int maxExtract, boolean simulate) {
+	public int extractEnergy(EnumFacing from, int maxExtract, boolean simulate) {
 
-		return from.ordinal() != facing ? 0 : energyStorage.extractEnergy(Math.min(config.maxPower * 2, maxExtract), simulate);
+		return from == null ? 0 : from.ordinal() != facing ? 0 : energyStorage.extractEnergy(Math.min(energyConfig.maxPower * 2, maxExtract), simulate);
 	}
 
 	@Override
-	public int getEnergyStored(ForgeDirection from) {
+	public int getEnergyStored(EnumFacing from) {
 
 		return energyStorage.getEnergyStored();
 	}
 
 	@Override
-	public int getMaxEnergyStored(ForgeDirection from) {
+	public int getMaxEnergyStored(EnumFacing from) {
 
 		return energyStorage.getMaxEnergyStored();
 	}
 
 	@Override
-	public boolean canConnectEnergy(ForgeDirection from) {
+	public boolean canConnectEnergy(EnumFacing from) {
 
-		return from.ordinal() == facing;
+		return from == null ? false : from.ordinal() == facing;
 	}
 
 	/* IEnergyInfo */
@@ -618,7 +619,7 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 	@Override
 	public int getInfoMaxEnergyPerTick() {
 
-		return config.maxPower * energyMod;
+		return energyConfig.maxPower * energyMod;
 	}
 
 	@Override
@@ -630,18 +631,18 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 	@Override
 	public int getInfoMaxEnergyStored() {
 
-		return config.maxEnergy;
+		return energyConfig.maxEnergy;
 	}
 
 	/* IFluidHandler */
-	public boolean canFill(ForgeDirection from, Fluid fluid) {
+	public boolean canFill(EnumFacing from, Fluid fluid) {
 
-		return augmentCoilDuct || from.ordinal() != facing;
+		return augmentCoilDuct || from == null || from.ordinal() != facing;
 	}
 
-	public boolean canDrain(ForgeDirection from, Fluid fluid) {
+	public boolean canDrain(EnumFacing from, Fluid fluid) {
 
-		return augmentCoilDuct || from.ordinal() != facing;
+		return augmentCoilDuct || from == null || from.ordinal() != facing;
 	}
 
 	/* IPortableData */
@@ -665,18 +666,15 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 	}
 
 	@Override
-	public boolean rotateBlock() {
+	public boolean rotateBlock(EnumFacing side) {
 
 		if (ServerHelper.isClientWorld(worldObj)) {
-			return false;
-		}
-		if (worldObj.getEntitiesWithinAABB(Entity.class, getBlockType().getCollisionBoundingBoxFromPool(worldObj, xCoord, yCoord, zCoord)).size() != 0) {
 			return false;
 		}
 		if (adjacentHandler != null) {
 			byte oldFacing = facing;
 			for (int i = facing + 1, e = facing + 6; i < e; i++) {
-				if (EnergyHelper.isAdjacentEnergyReceiverFromSide(this, i % 6)) {
+				if (EnergyHelper.isAdjacentEnergyReceiverFromSide(this, EnumFacing.VALUES[i % 6])) {
 					facing = (byte) (i % 6);
 					if (facing != oldFacing) {
 						updateAdjacentHandlers();
@@ -696,28 +694,28 @@ public abstract class TileDynamoBase extends TileRSControl implements IEnergyPro
 	}
 
 	@Override
-	public boolean setFacing(int side) {
+	public boolean setFacing(EnumFacing side) {
 
 		return false;
 	}
 
 	/* ISidedInventory */
 	@Override
-	public int[] getAccessibleSlotsFromSide(int side) {
+	public int[] getSlotsForFace(EnumFacing side) {
 
 		return CoFHProps.EMPTY_INVENTORY;
 	}
 
 	@Override
-	public boolean canInsertItem(int slot, ItemStack stack, int side) {
+	public boolean canInsertItem(int slot, ItemStack stack, EnumFacing side) {
 
-		return augmentCoilDuct || side != facing ? isItemValidForSlot(slot, stack) : false;
+		return augmentCoilDuct || side.ordinal() != facing ? isItemValidForSlot(slot, stack) : false;
 	}
 
 	@Override
-	public boolean canExtractItem(int slot, ItemStack stack, int side) {
+	public boolean canExtractItem(int slot, ItemStack stack, EnumFacing side) {
 
-		return augmentCoilDuct || side != facing;
+		return augmentCoilDuct || side.ordinal() != facing;
 	}
 
 }

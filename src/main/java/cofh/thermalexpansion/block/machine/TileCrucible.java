@@ -1,58 +1,54 @@
 package cofh.thermalexpansion.block.machine;
 
 import cofh.core.network.PacketCoFHBase;
-import cofh.core.render.IconRegistry;
 import cofh.core.util.CoreUtils;
 import cofh.core.util.fluid.FluidTankAdv;
-import cofh.lib.render.RenderHelper;
 import cofh.lib.util.helpers.FluidHelper;
 import cofh.lib.util.helpers.MathHelper;
 import cofh.lib.util.helpers.ServerHelper;
 import cofh.thermalexpansion.ThermalExpansion;
-import cofh.thermalexpansion.block.machine.BlockMachine.Types;
 import cofh.thermalexpansion.core.TEProps;
 import cofh.thermalexpansion.gui.client.machine.GuiCrucible;
 import cofh.thermalexpansion.gui.container.machine.ContainerCrucible;
 import cofh.thermalexpansion.util.crafting.CrucibleManager;
 import cofh.thermalexpansion.util.crafting.CrucibleManager.RecipeCrucible;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.util.EnumFacing;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.FluidTankInfo;
 import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 
 public class TileCrucible extends TileMachineBase implements IFluidHandler {
 
 	public static void initialize() {
 
-		int type = BlockMachine.Types.CRUCIBLE.ordinal();
+		int type = BlockMachine.Type.CRUCIBLE.ordinal();
 
-		defaultSideConfig[type] = new SideConfig();
-		defaultSideConfig[type].numConfig = 4;
-		defaultSideConfig[type].slotGroups = new int[][] { {}, { 0 }, {}, { 0 } };
-		defaultSideConfig[type].allowInsertionSide = new boolean[] { false, true, false, true };
-		defaultSideConfig[type].allowExtractionSide = new boolean[] { false, true, false, true };
-		defaultSideConfig[type].allowInsertionSlot = new boolean[] { true, false };
-		defaultSideConfig[type].allowExtractionSlot = new boolean[] { true, false };
-		defaultSideConfig[type].sideTex = new int[] { 0, 1, 4, 7 };
-		defaultSideConfig[type].defaultSides = new byte[] { 1, 1, 2, 2, 2, 2 };
+		DEFAULT_SIDE_CONFIG[type] = new SideConfig();
+		DEFAULT_SIDE_CONFIG[type].numConfig = 4;
+		DEFAULT_SIDE_CONFIG[type].slotGroups = new int[][] { {}, { 0 }, {}, { 0 } };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSide = new boolean[] { false, true, false, true };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSide = new boolean[] { false, true, false, true };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSlot = new boolean[] { true, false };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSlot = new boolean[] { true, false };
+		DEFAULT_SIDE_CONFIG[type].sideTex = new int[] { 0, 1, 4, 7 };
+		DEFAULT_SIDE_CONFIG[type].defaultSides = new byte[] { 1, 1, 2, 2, 2, 2 };
 
 		String category = "Machine.Crucible";
-		int basePower = MathHelper.clamp(ThermalExpansion.config.get(category, "BasePower", 400), 10, 500);
-		ThermalExpansion.config.set(category, "BasePower", basePower);
-		defaultEnergyConfig[type] = new EnergyConfig();
-		defaultEnergyConfig[type].setParams(basePower / 10, basePower, Math.max(400000, basePower * 1000));
+		int basePower = MathHelper.clamp(ThermalExpansion.CONFIG.get(category, "BasePower", 400), 10, 500);
+		ThermalExpansion.CONFIG.set(category, "BasePower", basePower);
+		DEFAULT_ENERGY_CONFIG[type] = new EnergyConfig();
+		DEFAULT_ENERGY_CONFIG[type].setParams(basePower / 10, basePower, Math.max(400000, basePower * 1000));
 
-		sounds[type] = CoreUtils.getSoundName(ThermalExpansion.modId, "blockMachineCrucible");
+		SOUNDS[type] = CoreUtils.getSoundName(ThermalExpansion.modId, "blockMachineCrucible");
 
-		GameRegistry.registerTileEntity(TileCrucible.class, "thermalexpansion.Crucible");
+		GameRegistry.registerTileEntity(TileCrucible.class, "thermalexpansion.machineCrucible");
 	}
 
 	int inputTracker;
@@ -64,7 +60,7 @@ public class TileCrucible extends TileMachineBase implements IFluidHandler {
 
 	public TileCrucible() {
 
-		super(Types.CRUCIBLE);
+		super(BlockMachine.Type.CRUCIBLE);
 		inventory = new ItemStack[1 + 1];
 	}
 
@@ -99,11 +95,11 @@ public class TileCrucible extends TileMachineBase implements IFluidHandler {
 		processMax = CrucibleManager.getRecipe(inventory[0]).getEnergy();
 		processRem = processMax;
 
-		int prevID = renderFluid.getFluidID();
-		renderFluid = CrucibleManager.getRecipe(inventory[0]).getOutput();
+		FluidStack prevFluid = renderFluid.copy();
+		renderFluid = CrucibleManager.getRecipe(inventory[0]).getOutput().copy();
 		renderFluid.amount = 0;
 
-		if (prevID != renderFluid.getFluidID()) {
+		if (!prevFluid.equals(renderFluid)) {
 			sendFluidPacket();
 		}
 	}
@@ -138,7 +134,7 @@ public class TileCrucible extends TileMachineBase implements IFluidHandler {
 		for (int i = inputTracker + 1; i <= inputTracker + 6; i++) {
 			side = i % 6;
 			if (sideCache[side] == 1) {
-				if (extractItem(0, AUTO_TRANSFER[level], side)) {
+				if (extractItem(0, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					inputTracker = side;
 					break;
 				}
@@ -160,7 +156,7 @@ public class TileCrucible extends TileMachineBase implements IFluidHandler {
 			side = i % 6;
 
 			if (sideCache[side] == 2) {
-				int toDrain = FluidHelper.insertFluidIntoAdjacentFluidHandler(this, side, outputBuffer, true);
+				int toDrain = FluidHelper.fillAdjacentFluidHandler(this, EnumFacing.VALUES[side], outputBuffer, true);
 
 				if (toDrain > 0) {
 					tank.drain(toDrain, true);
@@ -172,14 +168,14 @@ public class TileCrucible extends TileMachineBase implements IFluidHandler {
 	}
 
 	@Override
-	public void updateEntity() {
+	public void update() {
 
 		if (ServerHelper.isClientWorld(worldObj)) {
 			return;
 		}
 		transferOutputFluid();
 
-		super.updateEntity();
+		super.update();
 	}
 
 	@Override
@@ -228,7 +224,7 @@ public class TileCrucible extends TileMachineBase implements IFluidHandler {
 		if (tank.getFluid() != null) {
 			renderFluid = tank.getFluid();
 		} else if (CrucibleManager.getRecipe(inventory[0]) != null) {
-			renderFluid = CrucibleManager.getRecipe(inventory[0]).getOutput();
+			renderFluid = CrucibleManager.getRecipe(inventory[0]).getOutput().copy();
 		}
 	}
 
@@ -283,7 +279,7 @@ public class TileCrucible extends TileMachineBase implements IFluidHandler {
 
 		super.handleFluidPacket(payload);
 		renderFluid = payload.getFluidStack();
-		worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+		worldObj.markBlockForUpdate(pos);
 	}
 
 	/* IInventory */
@@ -308,15 +304,15 @@ public class TileCrucible extends TileMachineBase implements IFluidHandler {
 
 	/* IFluidHandler */
 	@Override
-	public int fill(ForgeDirection from, FluidStack resource, boolean doFill) {
+	public int fill(EnumFacing from, FluidStack resource, boolean doFill) {
 
 		return 0;
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, FluidStack resource, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, FluidStack resource, boolean doDrain) {
 
-		if (from != ForgeDirection.UNKNOWN && sideCache[from.ordinal()] != 2) {
+		if (from != null && sideCache[from.ordinal()] != 2) {
 			return null;
 		}
 		if (resource == null || !resource.isFluidEqual(tank.getFluid())) {
@@ -326,51 +322,34 @@ public class TileCrucible extends TileMachineBase implements IFluidHandler {
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, int maxDrain, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, int maxDrain, boolean doDrain) {
 
-		if (from != ForgeDirection.UNKNOWN && sideCache[from.ordinal()] != 2) {
+		if (from != null && sideCache[from.ordinal()] != 2) {
 			return null;
 		}
 		return tank.drain(maxDrain, doDrain);
 	}
 
 	@Override
-	public boolean canFill(ForgeDirection from, Fluid fluid) {
+	public boolean canFill(EnumFacing from, Fluid fluid) {
 
 		return false;
 	}
 
 	@Override
-	public boolean canDrain(ForgeDirection from, Fluid fluid) {
+	public boolean canDrain(EnumFacing from, Fluid fluid) {
 
 		// return sideCache[from.ordinal()] == 2;
 		return true;
 	}
 
 	@Override
-	public FluidTankInfo[] getTankInfo(ForgeDirection from) {
+	public FluidTankInfo[] getTankInfo(EnumFacing from) {
 
 		// if (sideCache[from.ordinal()] != 2) {
 		// return CoFHProps.EMPTY_TANK_INFO;
 		// }
 		return new FluidTankInfo[] { tank.getInfo() };
-	}
-
-	/* ISidedTexture */
-	@Override
-	public IIcon getTexture(int side, int pass) {
-
-		if (pass == 0) {
-			if (side == 0) {
-				return BlockMachine.machineBottom;
-			} else if (side == 1) {
-				return BlockMachine.machineTop;
-			}
-			return side != facing ? BlockMachine.machineSide : isActive ? RenderHelper.getFluidTexture(renderFluid) : BlockMachine.machineFace[type];
-		} else {
-			return side != facing ? IconRegistry.getIcon(TEProps.textureSelection, sideConfig.sideTex[sideCache[side]])
-					: isActive ? BlockMachine.machineActive[type] : BlockMachine.machineFace[type];
-		}
 	}
 
 }

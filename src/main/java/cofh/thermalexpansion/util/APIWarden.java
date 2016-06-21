@@ -1,6 +1,7 @@
 package cofh.thermalexpansion.util;
 
 import cofh.thermalexpansion.api.crafting.CraftingHandlers;
+import cofh.thermalexpansion.api.crafting.ICentrifugeHandler;
 import cofh.thermalexpansion.api.crafting.IChargerHandler;
 import cofh.thermalexpansion.api.crafting.ICrucibleHandler;
 import cofh.thermalexpansion.api.crafting.IFurnaceHandler;
@@ -14,6 +15,7 @@ import cofh.thermalexpansion.api.fuels.IEnervationHandler;
 import cofh.thermalexpansion.api.fuels.IMagmaticHandler;
 import cofh.thermalexpansion.api.fuels.IReactantHandler;
 import cofh.thermalexpansion.api.fuels.ISteamHandler;
+import cofh.thermalexpansion.util.crafting.CentrifugeManager;
 import cofh.thermalexpansion.util.crafting.ChargerManager;
 import cofh.thermalexpansion.util.crafting.CrucibleManager;
 import cofh.thermalexpansion.util.crafting.FurnaceManager;
@@ -22,6 +24,8 @@ import cofh.thermalexpansion.util.crafting.PulverizerManager;
 import cofh.thermalexpansion.util.crafting.SawmillManager;
 import cofh.thermalexpansion.util.crafting.SmelterManager;
 import cofh.thermalexpansion.util.crafting.TransposerManager;
+
+import java.util.List;
 
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
@@ -43,10 +47,11 @@ public class APIWarden {
 		CraftingHandlers.pulverizer = new PulverizerHandler();
 		CraftingHandlers.sawmill = new SawmillHandler();
 		CraftingHandlers.smelter = new SmelterHandler();
+		CraftingHandlers.insolator = new InsolatorHandler();
+		CraftingHandlers.charger = new ChargerHandler();
 		CraftingHandlers.crucible = new CrucibleHandler();
 		CraftingHandlers.transposer = new TransposerHandler();
-		CraftingHandlers.charger = new ChargerHandler();
-		CraftingHandlers.insolator = new InsolatorHandler();
+		CraftingHandlers.centrifuge = new CentrifugeHandler();
 	}
 
 	/** MACHINES */
@@ -116,6 +121,39 @@ public class APIWarden {
 		}
 	}
 
+	/* INSOLATOR */
+	public static class InsolatorHandler implements IInsolatorHandler {
+
+		@Override
+		public boolean addRecipe(int energy, ItemStack primaryInput, ItemStack secondaryInput, ItemStack primaryOutput, ItemStack secondaryOutput,
+				int secondaryChance, boolean overwrite) {
+
+			return InsolatorManager.addRecipe(energy, primaryInput, secondaryInput, primaryOutput, secondaryOutput, secondaryChance, overwrite);
+		}
+
+		@Override
+		public boolean removeRecipe(ItemStack primaryInput, ItemStack secondaryInput) {
+
+			return InsolatorManager.removeRecipe(primaryInput, secondaryInput);
+		}
+	}
+
+	/* CHARGER */
+	public static class ChargerHandler implements IChargerHandler {
+
+		@Override
+		public boolean addRecipe(int energy, ItemStack input, ItemStack output, boolean overwrite) {
+
+			return ChargerManager.addRecipe(energy, input, output, overwrite);
+		}
+
+		@Override
+		public boolean removeRecipe(ItemStack input) {
+
+			return ChargerManager.removeRecipe(input);
+		}
+	}
+
 	/* CRUCIBLE */
 	public static class CrucibleHandler implements ICrucibleHandler {
 
@@ -160,36 +198,19 @@ public class APIWarden {
 		}
 	}
 
-	/* CHARGER */
-	public static class ChargerHandler implements IChargerHandler {
+	/* CENTRIFUGE */
+	public static class CentrifugeHandler implements ICentrifugeHandler {
 
 		@Override
-		public boolean addRecipe(int energy, ItemStack input, ItemStack output, boolean overwrite) {
+		public boolean addRecipe(int energy, ItemStack input, List<ItemStack> primaryOutputs, FluidStack secondaryOutput, boolean overwrite) {
 
-			return ChargerManager.addRecipe(energy, input, output, overwrite);
+			return CentrifugeManager.addRecipe(energy, input, primaryOutputs, secondaryOutput, overwrite);
 		}
 
 		@Override
 		public boolean removeRecipe(ItemStack input) {
 
-			return ChargerManager.removeRecipe(input);
-		}
-	}
-
-	/* INSOLATOR */
-	public static class InsolatorHandler implements IInsolatorHandler {
-
-		@Override
-		public boolean addRecipe(int energy, ItemStack primaryInput, ItemStack secondaryInput, ItemStack primaryOutput, ItemStack secondaryOutput,
-				int secondaryChance, boolean overwrite) {
-
-			return InsolatorManager.addRecipe(energy, primaryInput, secondaryInput, primaryOutput, secondaryOutput, secondaryChance, overwrite);
-		}
-
-		@Override
-		public boolean removeRecipe(ItemStack primaryInput, ItemStack secondaryInput) {
-
-			return InsolatorManager.removeRecipe(primaryInput, secondaryInput);
+			return CentrifugeManager.removeRecipe(input);
 		}
 	}
 
@@ -224,7 +245,7 @@ public class APIWarden {
 		@Override
 		public boolean removeFuel(String name) {
 
-			return false;
+			return FuelManager.removeMagmaticFuel(name);
 		}
 
 	}
@@ -247,13 +268,13 @@ public class APIWarden {
 		@Override
 		public boolean removeFuel(String name) {
 
-			return false;
+			return FuelManager.removeCompressionFuel(name);
 		}
 
 		@Override
 		public boolean removeCoolant(String name) {
 
-			return false;
+			return FuelManager.removeCoolant(name);
 		}
 
 	}
@@ -270,19 +291,19 @@ public class APIWarden {
 		@Override
 		public boolean addReactant(ItemStack input, int energy) {
 
-			return false;
+			return FuelManager.addReactant(input, energy);
 		}
 
 		@Override
 		public boolean removeFuel(String name) {
 
-			return false;
+			return FuelManager.removeReactantFuel(name);
 		}
 
 		@Override
 		public boolean removeReactant(ItemStack input) {
 
-			return false;
+			return FuelManager.removeReactant(input);
 		}
 
 	}

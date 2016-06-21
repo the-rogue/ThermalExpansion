@@ -1,6 +1,5 @@
 package cofh.thermalexpansion.util.crafting;
 
-import cofh.core.util.oredict.OreDictionaryArbiter;
 import cofh.lib.inventory.ComparableItemStack;
 import cofh.lib.util.helpers.ColorHelper;
 import cofh.lib.util.helpers.ItemHelper;
@@ -8,14 +7,12 @@ import cofh.lib.util.helpers.MathHelper;
 import cofh.lib.util.helpers.StringHelper;
 import cofh.thermalexpansion.ThermalExpansion;
 import cofh.thermalexpansion.api.crafting.recipes.IPulverizerRecipe;
-import cofh.thermalexpansion.item.TEItems;
-import cofh.thermalfoundation.item.TFItems;
-import cofh.thermalfoundation.item.VanillaEquipment;
-import cpw.mods.fml.common.registry.GameRegistry;
+import cofh.thermalfoundation.item.ItemMaterial;
 
 import gnu.trove.map.hash.THashMap;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -34,11 +31,15 @@ public class PulverizerManager {
 	private static int oreMultiplier = 2;
 
 	static {
-		allowOverwrite = ThermalExpansion.config.get("RecipeManagers.Pulverizer", "AllowRecipeOverwrite", false);
+		allowOverwrite = ThermalExpansion.CONFIG.get("RecipeManagers.Pulverizer", "AllowRecipeOverwrite", false);
 
 		String category = "RecipeManagers.Pulverizer.Ore";
 		String comment = "This sets the default rate for Ore->Dust conversion. This number is used in all automatically generated recipes.";
-		oreMultiplier = MathHelper.clamp(ThermalExpansion.config.get(category, "DefaultMultiplier", oreMultiplier, comment), 1, 64);
+		oreMultiplier = MathHelper.clamp(ThermalExpansion.CONFIG.get(category, "DefaultMultiplier", oreMultiplier, comment), 1, 64);
+	}
+
+	private PulverizerManager() {
+
 	}
 
 	public static RecipePulverizer getRecipe(ItemStack input) {
@@ -72,102 +73,45 @@ public class PulverizerManager {
 		String comment;
 		String category = "RecipeManagers.Pulverizer.Recipes";
 
-		boolean recipeSandstone = ThermalExpansion.config.get(category, "Sandstone", true);
-		boolean recipeNetherrack = ThermalExpansion.config.get(category, "Netherrack", true);
-		boolean recipeWool = ThermalExpansion.config.get(category, "Wool", true);
-		boolean recipeReed = ThermalExpansion.config.get(category, "Reed", true);
-		boolean recipeBone = ThermalExpansion.config.get(category, "Bone", true);
-		boolean recipeBlazeRod = ThermalExpansion.config.get(category, "BlazeRod", true);
-		boolean recipeBlizzRod = ThermalExpansion.config.get(category, "BlizzRod", true);
-		boolean recipeBlitzRod = ThermalExpansion.config.get(category, "BlitzRod", true);
-		boolean recipeBasalzRod = ThermalExpansion.config.get(category, "BasalzRod", true);
-		boolean recipeHorseArmor = ThermalExpansion.config.get(category, "HorseArmor", true);
-		boolean recipeRedstoneLamp = ThermalExpansion.config.get(category, "RedstoneLamp", true);
-		boolean recipeGlassBottle = ThermalExpansion.config.get(category, "GlassBottle", true);
-
-		{ /* RECYCLING */
-			addRecipe(3200, new ItemStack(Blocks.glass), new ItemStack(Blocks.sand));
-			for (int i = 0; i < 16; ++i) {
-				addRecipe(3200, new ItemStack(Blocks.stained_glass, 1, i), new ItemStack(Blocks.sand));
-			}
-
-			if (recipeRedstoneLamp) {
-				addRecipe(3200, new ItemStack(Blocks.redstone_lamp), new ItemStack(Items.glowstone_dust, 4), new ItemStack(Items.redstone, 4));
-			}
-
-			addRecipe(1800, new ItemStack(Blocks.brick_block), new ItemStack(Items.brick, 4));
-			addRecipe(1800, new ItemStack(Blocks.nether_brick), new ItemStack(Items.netherbrick, 4));
-			for (int i = 0; i < 3; i++) {
-				addRecipe(1800, new ItemStack(Blocks.quartz_block, 1, i), new ItemStack(Items.quartz, 4));
-			}
-
-			addRecipe(2400, new ItemStack(Blocks.brick_stairs), new ItemStack(Items.brick, 6));
-			addRecipe(2400, new ItemStack(Blocks.nether_brick_stairs), new ItemStack(Items.netherbrick, 6));
-			addRecipe(2400, new ItemStack(Blocks.quartz_stairs), new ItemStack(Items.quartz, 6));
-
-			addRecipe(1200, new ItemStack(Blocks.stone_slab, 1, 4), new ItemStack(Items.brick, 2));
-			addRecipe(1200, new ItemStack(Blocks.stone_slab, 1, 6), new ItemStack(Items.netherbrick, 2));
-			addRecipe(1200, new ItemStack(Blocks.stone_slab, 1, 7), new ItemStack(Items.quartz, 2));
-
-			if (recipeSandstone) {
-				for (int i = 0; i < 3; i++) {
-					addTERecipe(3200, new ItemStack(Blocks.sandstone, 1, i), new ItemStack(Blocks.sand, 2), TFItems.dustNiter, 50);
-				}
-				addRecipe(4800, new ItemStack(Blocks.sandstone_stairs), new ItemStack(Blocks.sand, 2), TFItems.dustNiter, 75);
-				addRecipe(2400, new ItemStack(Blocks.stone_slab, 1, 1), new ItemStack(Blocks.sand, 1), TFItems.dustNiter, 25);
-			}
-
-			addRecipe(800, new ItemStack(Items.flower_pot), new ItemStack(Items.brick, 3));
-
-			if (recipeGlassBottle) {
-				addRecipe(800, new ItemStack(Items.glass_bottle), new ItemStack(Blocks.sand, 1));
-			}
-
-			if (recipeHorseArmor) {
-				addRecipe(4800, new ItemStack(Items.iron_horse_armor), ItemHelper.cloneStack(TFItems.dustIron, 5));
-				addRecipe(4800, new ItemStack(Items.golden_horse_armor), ItemHelper.cloneStack(TFItems.dustGold, 5));
-				addRecipe(4800, new ItemStack(Items.diamond_horse_armor), new ItemStack(Items.diamond, 5, 0));
-			}
-
-			// TODO:
-			// significant_ingredient * 600 + (stick/string) * 300 ?
-			// i like the feel of these values. re-do other recycle recipes for tools/armor?
-			addRecipe(1500, new ItemStack(Items.diamond_sword), new ItemStack(Items.diamond, 2));
-			addRecipe(2400, new ItemStack(Items.diamond_pickaxe), new ItemStack(Items.diamond, 3));
-			addRecipe(2400, new ItemStack(Items.diamond_axe), new ItemStack(Items.diamond, 3));
-			addRecipe(1200, new ItemStack(Items.diamond_shovel), new ItemStack(Items.diamond, 1));
-			addRecipe(1800, new ItemStack(Items.diamond_hoe), new ItemStack(Items.diamond, 2));
-			addRecipe(3000, new ItemStack(Items.diamond_helmet), new ItemStack(Items.diamond, 5));
-			addRecipe(4800, new ItemStack(Items.diamond_chestplate), new ItemStack(Items.diamond, 8));
-			addRecipe(4200, new ItemStack(Items.diamond_leggings), new ItemStack(Items.diamond, 7));
-			addRecipe(2400, new ItemStack(Items.diamond_boots), new ItemStack(Items.diamond, 4));
-			addRecipe(2400, VanillaEquipment.Diamond.toolBow, new ItemStack(Items.diamond, 2));
-			addRecipe(2100, VanillaEquipment.Diamond.toolFishingRod, new ItemStack(Items.diamond, 2));
-			addRecipe(1200, VanillaEquipment.Diamond.toolShears, new ItemStack(Items.diamond, 2));
-			addRecipe(2100, VanillaEquipment.Diamond.toolSickle, new ItemStack(Items.diamond, 3));
-		}
+		boolean recipeSandstone = ThermalExpansion.CONFIG.get(category, "Sandstone", true);
+		boolean recipeNetherrack = ThermalExpansion.CONFIG.get(category, "Netherrack", true);
+		boolean recipeWool = ThermalExpansion.CONFIG.get(category, "Wool", true);
+		boolean recipeReed = ThermalExpansion.CONFIG.get(category, "Reed", true);
+		boolean recipeBone = ThermalExpansion.CONFIG.get(category, "Bone", true);
+		boolean recipeBlazeRod = ThermalExpansion.CONFIG.get(category, "BlazeRod", true);
+		boolean recipeBlizzRod = ThermalExpansion.CONFIG.get(category, "BlizzRod", true);
+		boolean recipeBlitzRod = ThermalExpansion.CONFIG.get(category, "BlitzRod", true);
+		boolean recipeBasalzRod = ThermalExpansion.CONFIG.get(category, "BasalzRod", true);
 
 		addRecipe(3200, new ItemStack(Blocks.stone), new ItemStack(Blocks.gravel), new ItemStack(Blocks.sand), 15);
 		addRecipe(3200, new ItemStack(Blocks.cobblestone), new ItemStack(Blocks.sand), new ItemStack(Blocks.gravel), 15);
 		addRecipe(3200, new ItemStack(Blocks.gravel), new ItemStack(Items.flint), new ItemStack(Blocks.sand), 15);
+		addRecipe(3200, new ItemStack(Blocks.glass), new ItemStack(Blocks.sand));
 		addRecipe(800, new ItemStack(Blocks.stonebrick), new ItemStack(Blocks.stonebrick, 1, 2));
 
-		addRecipe(2400, new ItemStack(Items.coal, 1, 0), TFItems.dustCoal, TFItems.dustSulfur, 15);
-		addRecipe(2400, new ItemStack(Items.coal, 1, 1), TFItems.dustCharcoal);
-		addRecipe(4000, new ItemStack(Blocks.obsidian), ItemHelper.cloneStack(TFItems.dustObsidian, 4));
+		if (recipeSandstone) {
+			addTERecipe(3200, new ItemStack(Blocks.sandstone), new ItemStack(Blocks.sand, 2), ItemMaterial.dustNiter, 50);
+		}
+		addRecipe(2400, new ItemStack(Items.coal, 1, 0), ItemMaterial.dustCoal, ItemMaterial.dustSulfur, 15);
+		addRecipe(2400, new ItemStack(Items.coal, 1, 1), ItemMaterial.dustCharcoal);
+		addRecipe(4000, new ItemStack(Blocks.obsidian), ItemHelper.cloneStack(ItemMaterial.dustObsidian, 4));
 
 		if (recipeNetherrack) {
-			addTERecipe(3200, new ItemStack(Blocks.netherrack), new ItemStack(Blocks.gravel), TFItems.dustSulfur, 15);
+			addTERecipe(3200, new ItemStack(Blocks.netherrack), new ItemStack(Blocks.gravel), ItemMaterial.dustSulfur, 15);
 		}
-		addRecipe(2400, new ItemStack(Blocks.coal_ore), new ItemStack(Items.coal, 3, 0), TFItems.dustCoal, 25);
+		addRecipe(2400, new ItemStack(Blocks.coal_ore), new ItemStack(Items.coal, 3, 0), ItemMaterial.dustCoal, 25);
 		addRecipe(2400, new ItemStack(Blocks.diamond_ore), new ItemStack(Items.diamond, 2, 0));
 		addRecipe(2400, new ItemStack(Blocks.emerald_ore), new ItemStack(Items.emerald, 2, 0));
 		addRecipe(2400, new ItemStack(Blocks.glowstone), new ItemStack(Items.glowstone_dust, 4));
-		addRecipe(2400, new ItemStack(Blocks.lapis_ore), new ItemStack(Items.dye, 12, 4), TFItems.dustSulfur, 20);
-		addTERecipe(3200, new ItemStack(Blocks.redstone_ore), new ItemStack(Items.redstone, 6), TFItems.crystalCinnabar, 25);
-		addRecipe(2400, new ItemStack(Blocks.quartz_ore), new ItemStack(Items.quartz, 3), TFItems.dustSulfur, 15);
+		addRecipe(2400, new ItemStack(Blocks.lapis_ore), new ItemStack(Items.dye, 12, 4), ItemMaterial.dustSulfur, 20);
+		addTERecipe(3200, new ItemStack(Blocks.redstone_ore), new ItemStack(Items.redstone, 6), ItemMaterial.crystalCinnabar, 25);
+		addRecipe(2400, new ItemStack(Blocks.quartz_ore), new ItemStack(Items.quartz, 2), ItemMaterial.dustSulfur, 15);
 
-		addRecipe(1600, new ItemStack(Blocks.log), ItemHelper.cloneStack(TEItems.sawdust, 8));
+		for (int i = 0; i < 3; i++) {
+			addRecipe(2400, new ItemStack(Blocks.quartz_block, 1, i), new ItemStack(Items.quartz, 4));
+		}
+		addRecipe(2400, new ItemStack(Blocks.quartz_stairs), new ItemStack(Items.quartz, 6));
+		addRecipe(1600, new ItemStack(Blocks.log), ItemHelper.cloneStack(ItemMaterial.dustWood, 2));
 
 		addRecipe(1600, new ItemStack(Blocks.yellow_flower), new ItemStack(Items.dye, 4, 11));
 		addRecipe(1600, new ItemStack(Blocks.red_flower, 1, 0), new ItemStack(Items.dye, 4, 1));
@@ -190,7 +134,7 @@ public class PulverizerManager {
 			int[] dyeChance = new int[ColorHelper.woolColorConfig.length];
 
 			comment = "This sets the default rate for Wool->String conversion. This number is used in all automatically generated recipes.";
-			int numString = ThermalExpansion.config.get(category, "String", 4, comment);
+			int numString = ThermalExpansion.CONFIG.get(category, "String", 4, comment);
 			ItemStack stringStack = new ItemStack(Items.string, numString);
 
 			for (int i = 0; i < ColorHelper.woolColorConfig.length; i++) {
@@ -203,7 +147,7 @@ public class PulverizerManager {
 
 			category = "RecipeManagers.Pulverizer.Wool.Dye";
 			for (int i = 0; i < ColorHelper.woolColorConfig.length; i++) {
-				dyeChance[i] = MathHelper.clamp(ThermalExpansion.config.get(category, ColorHelper.woolColorConfig[i], dyeChance[i]), 0, 100);
+				dyeChance[i] = MathHelper.clamp(ThermalExpansion.CONFIG.get(category, ColorHelper.woolColorConfig[i], dyeChance[i]), 0, 100);
 
 				if (dyeChance[i] > 0) {
 					addTERecipe(1600, new ItemStack(Blocks.wool, 1, i), stringStack, new ItemStack(Items.dye, 1, 15 - i), dyeChance[i]);
@@ -219,50 +163,50 @@ public class PulverizerManager {
 			addTERecipe(1600, new ItemStack(Items.bone), new ItemStack(Items.dye, 6, 15));
 		}
 		if (recipeBlazeRod) {
-			addTERecipe(1600, new ItemStack(Items.blaze_rod), new ItemStack(Items.blaze_powder, 4), TFItems.dustSulfur, 50);
+			addTERecipe(1600, new ItemStack(Items.blaze_rod), new ItemStack(Items.blaze_powder, 4), ItemMaterial.dustSulfur, 50);
 		}
 		if (recipeBlizzRod) {
-			addTERecipe(1600, TFItems.rodBlizz, ItemHelper.cloneStack(TFItems.dustBlizz, 4), new ItemStack(Items.snowball), 50);
+			addTERecipe(1600, ItemMaterial.rodBlizz, ItemHelper.cloneStack(ItemMaterial.dustBlizz, 4), new ItemStack(Items.snowball), 50);
 		}
 		if (recipeBlitzRod) {
-			addTERecipe(1600, TFItems.rodBlitz, ItemHelper.cloneStack(TFItems.dustBlitz, 4), TFItems.dustNiter, 50);
+			addTERecipe(1600, ItemMaterial.rodBlitz, ItemHelper.cloneStack(ItemMaterial.dustBlitz, 4), ItemMaterial.dustNiter, 50);
 		}
 		if (recipeBasalzRod) {
-			addTERecipe(1600, TFItems.rodBasalz, ItemHelper.cloneStack(TFItems.dustBasalz, 4), TFItems.dustObsidian, 50);
+			addTERecipe(1600, ItemMaterial.rodBasalz, ItemHelper.cloneStack(ItemMaterial.dustBasalz, 4), ItemMaterial.dustObsidian, 50);
 		}
 		int energy = 4000;
 
-		addOreNameToDustRecipe(energy, "oreIron", TFItems.dustIron, TFItems.dustNickel, 10);
-		addOreNameToDustRecipe(energy, "oreGold", TFItems.dustGold, TFItems.crystalCinnabar, 5);
-		addOreNameToDustRecipe(energy, "oreCopper", TFItems.dustCopper, TFItems.dustGold, 10);
-		addOreNameToDustRecipe(energy, "oreTin", TFItems.dustTin, TFItems.dustIron, 10);
-		addOreNameToDustRecipe(energy, "oreSilver", TFItems.dustSilver, TFItems.dustLead, 10);
-		addOreNameToDustRecipe(energy, "oreLead", TFItems.dustLead, TFItems.dustSilver, 10);
-		addOreNameToDustRecipe(energy, "oreNickel", TFItems.dustNickel, TFItems.dustPlatinum, 10);
-		addOreNameToDustRecipe(energy, "orePlatinum", TFItems.dustPlatinum, null, 0);
+		addOreNameToDustRecipe(energy, "oreIron", ItemMaterial.dustIron, ItemMaterial.dustNickel, 10);
+		addOreNameToDustRecipe(energy, "oreGold", ItemMaterial.dustGold, ItemMaterial.crystalCinnabar, 5);
+		addOreNameToDustRecipe(energy, "oreCopper", ItemMaterial.dustCopper, ItemMaterial.dustGold, 10);
+		addOreNameToDustRecipe(energy, "oreTin", ItemMaterial.dustTin, ItemMaterial.dustIron, 10);
+		addOreNameToDustRecipe(energy, "oreSilver", ItemMaterial.dustSilver, ItemMaterial.dustLead, 10);
+		addOreNameToDustRecipe(energy, "oreLead", ItemMaterial.dustLead, ItemMaterial.dustSilver, 10);
+		addOreNameToDustRecipe(energy, "oreNickel", ItemMaterial.dustNickel, ItemMaterial.dustPlatinum, 10);
+		addOreNameToDustRecipe(energy, "orePlatinum", ItemMaterial.dustPlatinum, null, 0);
 
 		energy = 2400;
 
-		addIngotNameToDustRecipe(energy, "ingotIron", TFItems.dustIron);
-		addIngotNameToDustRecipe(energy, "ingotGold", TFItems.dustGold);
-		addIngotNameToDustRecipe(energy, "ingotCopper", TFItems.dustCopper);
-		addIngotNameToDustRecipe(energy, "ingotTin", TFItems.dustTin);
-		addIngotNameToDustRecipe(energy, "ingotSilver", TFItems.dustSilver);
-		addIngotNameToDustRecipe(energy, "ingotLead", TFItems.dustLead);
-		addIngotNameToDustRecipe(energy, "ingotNickel", TFItems.dustNickel);
-		addIngotNameToDustRecipe(energy, "ingotPlatinum", TFItems.dustPlatinum);
-		addIngotNameToDustRecipe(energy, "ingotElectrum", TFItems.dustElectrum);
-		addIngotNameToDustRecipe(energy, "ingotInvar", TFItems.dustInvar);
-		addIngotNameToDustRecipe(energy, "ingotBronze", TFItems.dustBronze);
+		addIngotNameToDustRecipe(energy, "ingotIron", ItemMaterial.dustIron);
+		addIngotNameToDustRecipe(energy, "ingotGold", ItemMaterial.dustGold);
+		addIngotNameToDustRecipe(energy, "ingotCopper", ItemMaterial.dustCopper);
+		addIngotNameToDustRecipe(energy, "ingotTin", ItemMaterial.dustTin);
+		addIngotNameToDustRecipe(energy, "ingotSilver", ItemMaterial.dustSilver);
+		addIngotNameToDustRecipe(energy, "ingotLead", ItemMaterial.dustLead);
+		addIngotNameToDustRecipe(energy, "ingotNickel", ItemMaterial.dustNickel);
+		addIngotNameToDustRecipe(energy, "ingotPlatinum", ItemMaterial.dustPlatinum);
+		addIngotNameToDustRecipe(energy, "ingotElectrum", ItemMaterial.dustElectrum);
+		addIngotNameToDustRecipe(energy, "ingotInvar", ItemMaterial.dustInvar);
+		addIngotNameToDustRecipe(energy, "ingotBronze", ItemMaterial.dustBronze);
 	}
 
 	public static void loadRecipes() {
 
 		String category = "RecipeManagers.Pulverizer.Recipes";
 
-		boolean siliconRecipe = ThermalExpansion.config.get(category, "Silicon", true);
-		boolean diamondRecipe = ThermalExpansion.config.get(category, "Diamond", true);
-		boolean enderPearlRecipe = ThermalExpansion.config.get(category, "EnderPearl", true);
+		boolean siliconRecipe = ThermalExpansion.CONFIG.get(category, "Silicon", true);
+		boolean diamondRecipe = ThermalExpansion.CONFIG.get(category, "Diamond", true);
+		boolean enderPearlRecipe = ThermalExpansion.CONFIG.get(category, "EnderPearl", true);
 
 		if (ItemHelper.oreNameExists("itemSilicon") && siliconRecipe) {
 			addRecipe(1600, new ItemStack(Blocks.sand, 1), ItemHelper.cloneStack(OreDictionary.getOres("itemSilicon").get(0), 1));
@@ -274,15 +218,15 @@ public class PulverizerManager {
 			addRecipe(1600, new ItemStack(Items.ender_pearl), ItemHelper.cloneStack(OreDictionary.getOres("dustEnderPearl").get(0), 1));
 		}
 		if (ItemHelper.oreNameExists("oreSaltpeter")) {
-			addRecipe(2400, OreDictionary.getOres("oreSaltpeter").get(0), ItemHelper.cloneStack(TFItems.dustNiter, 4));
+			addRecipe(2400, OreDictionary.getOres("oreSaltpeter").get(0), ItemHelper.cloneStack(ItemMaterial.dustNiter, 4));
 		}
 		if (ItemHelper.oreNameExists("oreSulfur")) {
-			addRecipe(2400, OreDictionary.getOres("oreSulfur").get(0), ItemHelper.cloneStack(TFItems.dustSulfur, 6));
+			addRecipe(2400, OreDictionary.getOres("oreSulfur").get(0), ItemHelper.cloneStack(ItemMaterial.dustSulfur, 6));
 		}
 		/* APATITE */
 		if (ItemHelper.oreNameExists("oreApatite") && ItemHelper.oreNameExists("gemApatite")) {
 			addRecipe(2400, OreDictionary.getOres("oreApatite").get(0), ItemHelper.cloneStack(OreDictionary.getOres("gemApatite").get(0), 12),
-				TFItems.dustSulfur, 10);
+					ItemMaterial.dustSulfur, 10);
 		}
 		/* AMETHYST */
 		if (ItemHelper.oreNameExists("oreAmethyst") && ItemHelper.oreNameExists("gemAmethyst")) {
@@ -315,7 +259,7 @@ public class PulverizerManager {
 		/* APPLIED ENERGISTICS 2 */
 		if (ItemHelper.oreNameExists("oreCertusQuartz") && ItemHelper.oreNameExists("dustCertusQuartz") && ItemHelper.oreNameExists("crystalCertusQuartz")) {
 			addRecipe(2400, OreDictionary.getOres("oreCertusQuartz").get(0), ItemHelper.cloneStack(OreDictionary.getOres("crystalCertusQuartz").get(0), 2),
-				OreDictionary.getOres("dustCertusQuartz").get(0), 10);
+					OreDictionary.getOres("dustCertusQuartz").get(0), 10);
 			addRecipe(1600, OreDictionary.getOres("crystalCertusQuartz").get(0), OreDictionary.getOres("dustCertusQuartz").get(0));
 		}
 		if (ItemHelper.oreNameExists("dustFluix") && ItemHelper.oreNameExists("crystalFluix")) {
@@ -393,29 +337,21 @@ public class PulverizerManager {
 		String oreName = "ore" + StringHelper.titleCase(oreType);
 		String dustName = "dust" + StringHelper.titleCase(oreType);
 		String ingotName = "ingot" + StringHelper.titleCase(oreType);
-		String relatedName = null;
 
-		ArrayList<ItemStack> registeredOre = OreDictionary.getOres(oreName);
-		ArrayList<ItemStack> registeredDust = OreDictionary.getOres(dustName);
-		ArrayList<ItemStack> registeredIngot = OreDictionary.getOres(ingotName);
-		ArrayList<ItemStack> registeredRelated = new ArrayList<ItemStack>();
+		List<ItemStack> registeredOre = OreDictionary.getOres(oreName);
+		List<ItemStack> registeredDust = OreDictionary.getOres(dustName);
+		List<ItemStack> registeredIngot = OreDictionary.getOres(ingotName);
+		List<ItemStack> registeredRelated = new ArrayList<ItemStack>();
 
 		String clusterName = "cluster" + StringHelper.titleCase(oreType);
-		ArrayList<ItemStack> registeredCluster = OreDictionary.getOres(clusterName);
+		List<ItemStack> registeredCluster = OreDictionary.getOres(clusterName);
 
 		if (relatedType != "") {
-			relatedName = "dust" + StringHelper.titleCase(relatedType);
+			String relatedName = "dust" + StringHelper.titleCase(relatedType);
 			registeredRelated = OreDictionary.getOres(relatedName);
 		}
 		if (registeredDust.isEmpty()) {
 			return;
-		}
-		ItemStack dust = GameRegistry.findItemStack("ThermalFoundation", dustName, 1);
-		if (dust != null && !OreDictionaryArbiter.getAllOreNames(dust).contains(dustName)) {
-			dust = null;
-		}
-		if (dust == null) {
-			dust = registeredDust.get(0);
 		}
 		if (registeredIngot.isEmpty()) {
 			ingotName = null;
@@ -426,19 +362,16 @@ public class PulverizerManager {
 		if (registeredCluster.isEmpty()) {
 			clusterName = null;
 		}
-		ItemStack related = null;
-		if (relatedName != null) {
-			related = GameRegistry.findItemStack("ThermalFoundation", relatedName, 1);
-			if (related != null && !OreDictionaryArbiter.getAllOreNames(related).contains(relatedName)) {
-				related = null;
-			}
+		if (!registeredRelated.isEmpty()) {
+			addOreNameToDustRecipe(4000, oreName, ItemHelper.cloneStack(registeredDust.get(0), oreMultiplier),
+					ItemHelper.cloneStack(registeredRelated.get(0), 1), 5);
+			addOreNameToDustRecipe(4800, clusterName, ItemHelper.cloneStack(registeredDust.get(0), oreMultiplier),
+					ItemHelper.cloneStack(registeredRelated.get(0), 1), 5);
+		} else {
+			addOreNameToDustRecipe(4000, oreName, ItemHelper.cloneStack(registeredDust.get(0), oreMultiplier), null, 0);
+			addOreNameToDustRecipe(4800, clusterName, ItemHelper.cloneStack(registeredDust.get(0), oreMultiplier), null, 0);
 		}
-		if (related == null && !registeredRelated.isEmpty()) {
-			related = registeredRelated.get(0);
-		}
-		addOreNameToDustRecipe(4000, oreName, ItemHelper.cloneStack(dust, oreMultiplier), related, 5);
-		addOreNameToDustRecipe(4800, clusterName, ItemHelper.cloneStack(dust, oreMultiplier), related, 5);
-		addIngotNameToDustRecipe(2400, ingotName, ItemHelper.cloneStack(dust, 1));
+		addIngotNameToDustRecipe(2400, ingotName, ItemHelper.cloneStack(registeredDust.get(0), 1));
 	}
 
 	public static void addOreNameToDustRecipe(int energy, String oreName, ItemStack primaryOutput, ItemStack secondaryOutput, int secondaryChance) {
@@ -446,11 +379,11 @@ public class PulverizerManager {
 		if (primaryOutput == null || oreName == null) {
 			return;
 		}
-		ArrayList<ItemStack> registeredOres = OreDictionary.getOres(oreName);
+		List<ItemStack> registeredOres = OreDictionary.getOres(oreName);
 
 		if (!registeredOres.isEmpty()) {
 			addRecipe(energy, ItemHelper.cloneStack(registeredOres.get(0), 1), ItemHelper.cloneStack(primaryOutput, oreMultiplier), secondaryOutput,
-				secondaryChance);
+					secondaryChance);
 		}
 	}
 
@@ -468,7 +401,7 @@ public class PulverizerManager {
 		if (dust == null || ingotName == null) {
 			return;
 		}
-		ArrayList<ItemStack> registeredOres = OreDictionary.getOres(ingotName);
+		List<ItemStack> registeredOres = OreDictionary.getOres(ingotName);
 
 		if (!registeredOres.isEmpty()) {
 			addRecipe(energy, ItemHelper.cloneStack(registeredOres.get(0), 1), dust, null, 0);
@@ -540,13 +473,13 @@ public class PulverizerManager {
 		@Override
 		public ItemStack getInput() {
 
-			return input.copy();
+			return input;
 		}
 
 		@Override
 		public ItemStack getPrimaryOutput() {
 
-			return primaryOutput.copy();
+			return primaryOutput;
 		}
 
 		@Override
@@ -555,7 +488,7 @@ public class PulverizerManager {
 			if (secondaryOutput == null) {
 				return null;
 			}
-			return secondaryOutput.copy();
+			return secondaryOutput;
 		}
 
 		@Override
@@ -588,7 +521,7 @@ public class PulverizerManager {
 
 		public static int getOreID(ItemStack stack) {
 
-			int id = ItemHelper.oreProxy.getOreID(stack);
+			int id = ItemHelper.oreProxy.getPrimaryOreID(stack);
 
 			if (id == -1 || !safeOreType(ItemHelper.oreProxy.getOreName(id))) {
 				return -1;

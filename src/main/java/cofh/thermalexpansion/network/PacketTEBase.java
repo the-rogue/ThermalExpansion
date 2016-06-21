@@ -4,13 +4,14 @@ import cofh.api.tileentity.IRedstoneControl;
 import cofh.api.tileentity.IRedstoneControl.ControlMode;
 import cofh.api.tileentity.ISecurable;
 import cofh.api.tileentity.ISecurable.AccessMode;
+import cofh.core.gui.container.IAugmentableContainer;
 import cofh.core.network.PacketCoFHBase;
 import cofh.core.network.PacketHandler;
-import cofh.lib.gui.container.IAugmentableContainer;
 import cofh.thermalexpansion.ThermalExpansion;
 import cofh.thermalexpansion.gui.container.ISchematicContainer;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.BlockPos;
 import net.minecraft.world.World;
 
 public class PacketTEBase extends PacketCoFHBase {
@@ -33,12 +34,12 @@ public class PacketTEBase extends PacketCoFHBase {
 			switch (PacketTypes.values()[type]) {
 			case RS_POWER_UPDATE:
 				int coords[] = getCoords();
-				IRedstoneControl rs = (IRedstoneControl) player.worldObj.getTileEntity(coords[0], coords[1], coords[2]);
+				IRedstoneControl rs = (IRedstoneControl) player.worldObj.getTileEntity(new BlockPos(coords[0], coords[1], coords[2]));
 				rs.setPowered(getBool());
 				return;
 			case RS_CONFIG_UPDATE:
 				coords = getCoords();
-				rs = (IRedstoneControl) player.worldObj.getTileEntity(coords[0], coords[1], coords[2]);
+				rs = (IRedstoneControl) player.worldObj.getTileEntity(new BlockPos(coords[0], coords[1], coords[2]));
 				rs.setControl(ControlMode.values()[getByte()]);
 				return;
 			case SECURITY_UPDATE:
@@ -60,22 +61,22 @@ public class PacketTEBase extends PacketCoFHBase {
 				ThermalExpansion.instance.handleConfigSync(this);
 				return;
 			default:
-				ThermalExpansion.log.error("Unknown Packet! Internal: TEPH, ID: " + type);
+				ThermalExpansion.LOG.error("Unknown Packet! Internal: TE_PH, ID: " + type);
 			}
 		} catch (Exception e) {
-			ThermalExpansion.log.error("Packet payload failure! Please check your config files!");
+			ThermalExpansion.LOG.error("Packet payload failure! Please check your configuration!");
 			e.printStackTrace();
 		}
 	}
 
-	public static void sendRSPowerUpdatePacketToClients(IRedstoneControl rs, World world, int x, int y, int z) {
+	public static void sendRSPowerUpdatePacketToClients(IRedstoneControl rs, World world, BlockPos pos) {
 
-		PacketHandler.sendToAllAround(getPacket(PacketTypes.RS_POWER_UPDATE).addCoords(x, y, z).addBool(rs.isPowered()), world, x, y, z);
+		PacketHandler.sendToAllAround(getPacket(PacketTypes.RS_POWER_UPDATE).addCoords(pos).addBool(rs.isPowered()), world, pos);
 	}
 
-	public static void sendRSConfigUpdatePacketToServer(IRedstoneControl rs, int x, int y, int z) {
+	public static void sendRSConfigUpdatePacketToServer(IRedstoneControl rs, BlockPos pos) {
 
-		PacketHandler.sendToServer(getPacket(PacketTypes.RS_CONFIG_UPDATE).addCoords(x, y, z).addByte(rs.getControl().ordinal()));
+		PacketHandler.sendToServer(getPacket(PacketTypes.RS_CONFIG_UPDATE).addCoords(pos).addByte(rs.getControl().ordinal()));
 	}
 
 	public static void sendSecurityPacketToServer(ISecurable securable) {

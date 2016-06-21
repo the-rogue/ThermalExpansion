@@ -1,6 +1,6 @@
 package cofh.thermalexpansion.util.crafting;
 
-import cofh.core.util.oredict.OreDictionaryArbiter;
+import cofh.core.util.OreDictionaryArbiter;
 import cofh.lib.inventory.ComparableItemStack;
 import cofh.lib.inventory.ComparableItemStackSafe;
 import cofh.lib.util.helpers.ItemHelper;
@@ -22,7 +22,11 @@ public class ChargerManager {
 	public static final int DEFAULT_ENERGY = 4000;
 
 	static {
-		allowOverwrite = ThermalExpansion.config.get("RecipeManagers.Charger", "AllowRecipeOverwrite", false);
+		allowOverwrite = ThermalExpansion.CONFIG.get("RecipeManagers.Charger", "AllowRecipeOverwrite", false);
+	}
+
+	private ChargerManager() {
+
 	}
 
 	public static RecipeCharger getRecipe(ItemStack input) {

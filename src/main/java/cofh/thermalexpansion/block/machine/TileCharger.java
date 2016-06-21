@@ -6,16 +6,16 @@ import cofh.lib.util.helpers.ItemHelper;
 import cofh.lib.util.helpers.MathHelper;
 import cofh.lib.util.helpers.ServerHelper;
 import cofh.thermalexpansion.ThermalExpansion;
-import cofh.thermalexpansion.block.machine.BlockMachine.Types;
 import cofh.thermalexpansion.gui.client.machine.GuiCharger;
 import cofh.thermalexpansion.gui.container.machine.ContainerCharger;
 import cofh.thermalexpansion.util.crafting.ChargerManager;
 import cofh.thermalexpansion.util.crafting.ChargerManager.RecipeCharger;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumFacing;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 
 public class TileCharger extends TileMachineBase {
 
@@ -23,23 +23,23 @@ public class TileCharger extends TileMachineBase {
 
 	public static void initialize() {
 
-		int type = BlockMachine.Types.CHARGER.ordinal();
+		int type = BlockMachine.Type.CHARGER.ordinal();
 
-		defaultSideConfig[type] = new SideConfig();
-		defaultSideConfig[type].numConfig = 4;
-		defaultSideConfig[type].slotGroups = new int[][] { {}, { 0 }, { 2 }, { 0, 2 } };
-		defaultSideConfig[type].allowInsertionSide = new boolean[] { false, true, false, true };
-		defaultSideConfig[type].allowExtractionSide = new boolean[] { false, true, true, true };
-		defaultSideConfig[type].allowInsertionSlot = new boolean[] { true, false, false, false };
-		defaultSideConfig[type].allowExtractionSlot = new boolean[] { true, false, true, false };
-		defaultSideConfig[type].sideTex = new int[] { 0, 1, 4, 7 };
-		defaultSideConfig[type].defaultSides = new byte[] { 1, 1, 2, 2, 2, 2 };
+		DEFAULT_SIDE_CONFIG[type] = new SideConfig();
+		DEFAULT_SIDE_CONFIG[type].numConfig = 4;
+		DEFAULT_SIDE_CONFIG[type].slotGroups = new int[][] { {}, { 0 }, { 2 }, { 0, 2 } };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSide = new boolean[] { false, true, false, true };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSide = new boolean[] { false, true, true, true };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSlot = new boolean[] { true, false, false, false };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSlot = new boolean[] { true, false, true, false };
+		DEFAULT_SIDE_CONFIG[type].sideTex = new int[] { 0, 1, 4, 7 };
+		DEFAULT_SIDE_CONFIG[type].defaultSides = new byte[] { 1, 1, 2, 2, 2, 2 };
 
 		String category = "Machine.Charger";
-		int basePower = MathHelper.clamp(ThermalExpansion.config.get(category, "BasePower", 8000), 100, 20000);
-		ThermalExpansion.config.set(category, "BasePower", basePower);
-		defaultEnergyConfig[type] = new EnergyConfig();
-		defaultEnergyConfig[type].setParams(1, basePower, Math.max(400000, basePower * 50));
+		int basePower = MathHelper.clamp(ThermalExpansion.CONFIG.get(category, "BasePower", 8000), 100, 20000);
+		ThermalExpansion.CONFIG.set(category, "BasePower", basePower);
+		DEFAULT_ENERGY_CONFIG[type] = new EnergyConfig();
+		DEFAULT_ENERGY_CONFIG[type].setParams(1, basePower, Math.max(400000, basePower * 50));
 
 		RATE = new int[4];
 		RATE[0] = basePower;
@@ -47,7 +47,7 @@ public class TileCharger extends TileMachineBase {
 		RATE[2] = basePower * 3;
 		RATE[3] = basePower * 4;
 
-		GameRegistry.registerTileEntity(TileCharger.class, "thermalexpansion.Charger");
+		GameRegistry.registerTileEntity(TileCharger.class, "thermalexpansion.machineCharger");
 	}
 
 	int inputTracker;
@@ -57,12 +57,12 @@ public class TileCharger extends TileMachineBase {
 
 	public TileCharger() {
 
-		super(Types.CHARGER);
+		super(BlockMachine.Type.CHARGER);
 		inventory = new ItemStack[1 + 1 + 1 + 1];
 	}
 
 	@Override
-	public void updateEntity() {
+	public void update() {
 
 		if (ServerHelper.isClientWorld(worldObj)) {
 			if (inventory[1] == null) {
@@ -84,7 +84,7 @@ public class TileCharger extends TileMachineBase {
 			updateIfChanged(curActive);
 			chargeEnergy();
 		} else {
-			super.updateEntity();
+			super.update();
 		}
 	}
 
@@ -202,7 +202,7 @@ public class TileCharger extends TileMachineBase {
 		for (int i = inputTracker + 1; i <= inputTracker + 6; i++) {
 			side = i % 6;
 			if (sideCache[side] == 1) {
-				if (extractItem(0, AUTO_TRANSFER[level], side)) {
+				if (extractItem(0, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					inputTracker = side;
 					break;
 				}
@@ -243,7 +243,7 @@ public class TileCharger extends TileMachineBase {
 			side = i % 6;
 
 			if (sideCache[side] == 2) {
-				if (transferItem(2, AUTO_TRANSFER[level], side)) {
+				if (transferItem(2, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					outputTracker = side;
 					break;
 				}

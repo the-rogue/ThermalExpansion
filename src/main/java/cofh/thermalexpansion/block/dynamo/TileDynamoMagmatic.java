@@ -4,38 +4,29 @@ import cofh.core.network.PacketCoFHBase;
 import cofh.core.util.fluid.FluidTankAdv;
 import cofh.thermalexpansion.gui.client.dynamo.GuiDynamoMagmatic;
 import cofh.thermalexpansion.gui.container.ContainerTEBase;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import gnu.trove.map.hash.TObjectIntHashMap;
 
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.util.EnumFacing;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidContainerRegistry;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.FluidTankInfo;
 import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 
 public class TileDynamoMagmatic extends TileDynamoBase implements IFluidHandler {
 
-	static final int TYPE = BlockDynamo.Types.MAGMATIC.ordinal();
-
 	public static void initialize() {
 
-		GameRegistry.registerTileEntity(TileDynamoMagmatic.class, "thermalexpansion.DynamoMagmatic");
+		GameRegistry.registerTileEntity(TileDynamoMagmatic.class, "thermalexpansion.dynamoMagmatic");
 	}
 
 	FluidTankAdv tank = new FluidTankAdv(MAX_FLUID);
 	FluidStack renderFluid = new FluidStack(FluidRegistry.LAVA, FluidContainerRegistry.BUCKET_VOLUME);
-
-	@Override
-	public int getType() {
-
-		return TYPE;
-	}
 
 	@Override
 	public int getLightValue() {
@@ -59,12 +50,6 @@ public class TileDynamoMagmatic extends TileDynamoBase implements IFluidHandler 
 		int energy = calcEnergy() * energyMod;
 		energyStorage.modifyEnergyStored(energy);
 		fuelRF -= energy;
-	}
-
-	@Override
-	public IIcon getActiveIcon() {
-
-		return renderFluid.getFluid().getIcon(renderFluid);
 	}
 
 	/* GUI METHODS */
@@ -153,9 +138,9 @@ public class TileDynamoMagmatic extends TileDynamoBase implements IFluidHandler 
 
 	/* IFluidHandler */
 	@Override
-	public int fill(ForgeDirection from, FluidStack resource, boolean doFill) {
+	public int fill(EnumFacing from, FluidStack resource, boolean doFill) {
 
-		if (resource == null || !augmentCoilDuct && from.ordinal() == facing) {
+		if (resource == null || !augmentCoilDuct && from != null && from.ordinal() == facing) {
 			return 0;
 		}
 		if (isValidFuel(resource)) {
@@ -165,9 +150,9 @@ public class TileDynamoMagmatic extends TileDynamoBase implements IFluidHandler 
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, FluidStack resource, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, FluidStack resource, boolean doDrain) {
 
-		if (resource == null || !augmentCoilDuct && from.ordinal() == facing) {
+		if (resource == null || !augmentCoilDuct && from != null && from.ordinal() == facing) {
 			return null;
 		}
 		if (isValidFuel(resource)) {
@@ -177,16 +162,16 @@ public class TileDynamoMagmatic extends TileDynamoBase implements IFluidHandler 
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, int maxDrain, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, int maxDrain, boolean doDrain) {
 
-		if (!augmentCoilDuct && from.ordinal() == facing) {
+		if (!augmentCoilDuct && from != null && from.ordinal() == facing) {
 			return null;
 		}
 		return tank.drain(maxDrain, doDrain);
 	}
 
 	@Override
-	public FluidTankInfo[] getTankInfo(ForgeDirection from) {
+	public FluidTankInfo[] getTankInfo(EnumFacing from) {
 
 		return new FluidTankInfo[] { tank.getInfo() };
 	}

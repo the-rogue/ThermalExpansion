@@ -2,32 +2,35 @@ package cofh.thermalexpansion.block.machine;
 
 import cofh.api.energy.EnergyStorage;
 import cofh.api.item.IAugmentItem;
+import cofh.api.tileentity.ISidedTexture;
 import cofh.core.network.PacketCoFHBase;
-import cofh.core.render.IconRegistry;
 import cofh.lib.util.TimeTracker;
 import cofh.lib.util.helpers.MathHelper;
 import cofh.lib.util.helpers.ServerHelper;
-import cofh.lib.util.helpers.StringHelper;
-import cofh.thermalexpansion.ThermalExpansion;
+import cofh.thermalexpansion.block.BlockTEBase;
 import cofh.thermalexpansion.block.TileAugmentable;
-import cofh.thermalexpansion.block.machine.BlockMachine.Types;
 import cofh.thermalexpansion.core.TEProps;
 import cofh.thermalexpansion.item.TEAugments;
-import cpw.mods.fml.relauncher.Side;
 
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.util.IIcon;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.ITickable;
+import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.common.property.IExtendedBlockState;
+import net.minecraftforge.fml.relauncher.Side;
 
-public abstract class TileMachineBase extends TileAugmentable {
+public abstract class TileMachineBase extends TileAugmentable implements ITickable, ISidedTexture {
 
-	protected static final SideConfig[] defaultSideConfig = new SideConfig[BlockMachine.Types.values().length];
-	protected static final EnergyConfig[] defaultEnergyConfig = new EnergyConfig[BlockMachine.Types.values().length];
-	protected static final String[] sounds = new String[BlockMachine.Types.values().length];
-	protected static final boolean[] enableSound = new boolean[BlockMachine.Types.values().length];
-	protected static final int[] lightValue = { 14, 0, 0, 15, 15, 1, 0, 14, 0, 0, 7, 15 };
-	public static final boolean[] enableSecurity = new boolean[BlockMachine.Types.values().length];
+	protected static final SideConfig[] DEFAULT_SIDE_CONFIG = new SideConfig[BlockMachine.Type.values().length];
+	protected static final EnergyConfig[] DEFAULT_ENERGY_CONFIG = new EnergyConfig[BlockMachine.Type.values().length];
+	public static final boolean[] SECURITY = new boolean[BlockMachine.Type.values().length];
+
+	protected static final String[] SOUNDS = new String[BlockMachine.Type.values().length];
+	protected static final boolean[] ENABLE_SOUND = new boolean[BlockMachine.Type.values().length];
 
 	protected static final int RATE = 500;
 	protected static final int AUGMENT_COUNT[] = new int[] { 3, 4, 5, 6 };
@@ -35,18 +38,6 @@ public abstract class TileMachineBase extends TileAugmentable {
 	protected static final int ENERGY_TRANSFER[] = new int[] { 3, 6, 12, 24 };
 	protected static final int AUTO_TRANSFER[] = new int[] { 8, 16, 32, 64 };
 	protected static final int FLUID_CAPACITY[] = new int[] { 1, 2, 4, 8 };
-
-	public static void configure() {
-
-		for (int i = 0; i < BlockMachine.Types.values().length; i++) {
-			String name = StringHelper.titleCase(BlockMachine.NAMES[i]);
-			String comment = "Enable this to allow for " + name + "s to be securable.";
-			enableSecurity[i] = ThermalExpansion.config.get("Security", "Machine." + name + ".Securable", true, comment);
-
-			comment = "Enable sounds for the " + name + ".";
-			enableSound[i] = ThermalExpansion.configClient.get("Machine." + name, "Sound.Enable", true, comment);
-		}
-	}
 
 	int processMax;
 	int processRem;
@@ -65,89 +56,38 @@ public abstract class TileMachineBase extends TileAugmentable {
 
 	public TileMachineBase() {
 
-		this(Types.FURNACE);
+		this(BlockMachine.Type.FURNACE);
 		if (getClass() != TileMachineBase.class) {
 			throw new IllegalArgumentException();
 		}
 	}
 
-	public TileMachineBase(Types type) {
+	public TileMachineBase(BlockMachine.Type type) {
 
 		this.type = (byte) type.ordinal();
 
-		sideConfig = defaultSideConfig[this.type];
-		energyConfig = defaultEnergyConfig[this.type].copy();
+		sideConfig = DEFAULT_SIDE_CONFIG[this.type];
+		energyConfig = DEFAULT_ENERGY_CONFIG[this.type].copy();
 		energyStorage = new EnergyStorage(energyConfig.maxEnergy, energyConfig.maxPower * ENERGY_TRANSFER[level]);
 		setDefaultSides();
 	}
 
 	@Override
-	public int getType() {
-
-		return type;
-	}
-
-	@Override
 	public String getName() {
 
-		return "tile.thermalexpansion.machine." + BlockMachine.NAMES[type] + ".name";
+		return "tile.thermalexpansion.machine." + BlockMachine.Type.byMetadata(type).getName() + ".name";
 	}
 
 	@Override
 	public int getLightValue() {
 
-		return isActive ? lightValue[type] : 0;
+		return isActive ? BlockMachine.Type.values()[type].getLight() : 0;
 	}
 
 	@Override
 	public boolean enableSecurity() {
 
-		return enableSecurity[type];
-	}
-
-	@Override
-	public void updateEntity() {
-
-		if (ServerHelper.isClientWorld(worldObj)) {
-			return;
-		}
-		boolean curActive = isActive;
-
-		if (isActive) {
-			if (processRem > 0) {
-				int energy = calcEnergy();
-				energyStorage.modifyEnergyStored(-energy * energyMod);
-				processRem -= energy * processMod;
-			}
-			if (canFinish()) {
-				processFinish();
-				transferOutput();
-				transferInput();
-				energyStorage.modifyEnergyStored(-processRem * energyMod / processMod);
-
-				if (!redstoneControlOrDisable() || !canStart()) {
-					isActive = false;
-					wasActive = true;
-					tracker.markTime(worldObj);
-				} else {
-					processStart();
-				}
-			}
-		} else if (redstoneControlOrDisable()) {
-			if (timeCheck()) {
-				transferOutput();
-				transferInput();
-			}
-			if (timeCheckEighth() && canStart()) {
-				processStart();
-				int energy = calcEnergy();
-				energyStorage.modifyEnergyStored(-energy * energyMod);
-				processRem -= energy * processMod;
-				isActive = true;
-			}
-		}
-		updateIfChanged(curActive);
-		chargeEnergy();
+		return SECURITY[type];
 	}
 
 	protected int calcEnergy() {
@@ -203,13 +143,13 @@ public abstract class TileMachineBase extends TileAugmentable {
 	protected void updateIfChanged(boolean curActive) {
 
 		if (curActive != isActive && !wasActive) {
-			if (lightValue[type] != 0) {
+			if (BlockMachine.Type.values()[type].getLight() != 0) {
 				updateLighting();
 			}
 			sendUpdatePacket(Side.CLIENT);
 		} else if (wasActive && tracker.hasDelayPassed(worldObj, 100)) {
 			wasActive = false;
-			if (lightValue[type] != 0) {
+			if (BlockMachine.Type.values()[type].getLight() != 0) {
 				updateLighting();
 			}
 			sendUpdatePacket(Side.CLIENT);
@@ -223,6 +163,67 @@ public abstract class TileMachineBase extends TileAugmentable {
 		energyConfig.setParams(energyConfig.minPower, energyConfig.maxPower, energyConfig.maxEnergy * ENERGY_CAPACITY[level] / 2);
 		energyStorage.setCapacity(energyConfig.maxEnergy);
 		energyStorage.setMaxTransfer(energyConfig.maxPower * ENERGY_TRANSFER[level]);
+	}
+
+	/* ITickable */
+	@Override
+	public void update() {
+
+		if (ServerHelper.isClientWorld(worldObj)) {
+			return;
+		}
+		boolean curActive = isActive;
+
+		if (isActive) {
+			if (processRem > 0) {
+				int energy = calcEnergy();
+				energyStorage.modifyEnergyStored(-energy * energyMod);
+				processRem -= energy * processMod;
+			}
+			if (canFinish()) {
+				processFinish();
+				transferOutput();
+				transferInput();
+				energyStorage.modifyEnergyStored(-processRem * energyMod / processMod);
+
+				if (!redstoneControlOrDisable() || !canStart()) {
+					isActive = false;
+					wasActive = true;
+					tracker.markTime(worldObj);
+				} else {
+					processStart();
+				}
+			}
+		} else if (redstoneControlOrDisable()) {
+			if (timeCheck()) {
+				transferOutput();
+				transferInput();
+			}
+			if (timeCheckEighth() && canStart()) {
+				processStart();
+				int energy = calcEnergy();
+				energyStorage.modifyEnergyStored(-energy * energyMod);
+				processRem -= energy * processMod;
+				isActive = true;
+			}
+		}
+		updateIfChanged(curActive);
+		chargeEnergy();
+	}
+
+	/* BLOCK STATE */
+	@Override
+	public IBlockState getExtendedState(IBlockState state, IBlockAccess world, BlockPos pos) {
+
+		IExtendedBlockState exState = (IExtendedBlockState) state;
+
+		return exState.withProperty(TEProps.ACTIVE, isActive).withProperty(TEProps.FACING, EnumFacing.VALUES[facing])
+				.withProperty(TEProps.SIDE_CONFIG[0], BlockTEBase.EnumSideConfig.VALUES[sideCache[0]])
+				.withProperty(TEProps.SIDE_CONFIG[1], BlockTEBase.EnumSideConfig.VALUES[sideCache[1]])
+				.withProperty(TEProps.SIDE_CONFIG[2], BlockTEBase.EnumSideConfig.VALUES[sideCache[2]])
+				.withProperty(TEProps.SIDE_CONFIG[3], BlockTEBase.EnumSideConfig.VALUES[sideCache[3]])
+				.withProperty(TEProps.SIDE_CONFIG[4], BlockTEBase.EnumSideConfig.VALUES[sideCache[4]])
+				.withProperty(TEProps.SIDE_CONFIG[5], BlockTEBase.EnumSideConfig.VALUES[sideCache[5]]);
 	}
 
 	/* GUI METHODS */
@@ -272,15 +273,7 @@ public abstract class TileMachineBase extends TileAugmentable {
 		level = nbt.getByte("Level");
 		onLevelChange();
 
-		NBTTagList list = nbt.getTagList("Augments", 10);
-
-		for (int i = 0; i < list.tagCount(); i++) {
-			NBTTagCompound tag = list.getCompoundTagAt(i);
-			int slot = tag.getInteger("Slot");
-			if (slot >= 0 && slot < augments.length) {
-				augments[slot] = ItemStack.loadItemStackFromNBT(tag);
-			}
-		}
+		super.readAugmentsFromNBT(nbt);
 	}
 
 	@Override
@@ -288,19 +281,7 @@ public abstract class TileMachineBase extends TileAugmentable {
 
 		nbt.setByte("Level", level);
 
-		if (augments.length <= 0) {
-			return;
-		}
-		NBTTagList list = new NBTTagList();
-		for (int i = 0; i < augments.length; i++) {
-			if (augments[i] != null) {
-				NBTTagCompound tag = new NBTTagCompound();
-				tag.setInteger("Slot", i);
-				augments[i].writeToNBT(tag);
-				list.appendTag(tag);
-			}
-		}
-		nbt.setTag("Augments", list);
+		super.writeAugmentsToNBT(nbt);
 	}
 
 	/* NETWORK METHODS */
@@ -389,7 +370,6 @@ public abstract class TileMachineBase extends TileAugmentable {
 				return false;
 			}
 			if (hasAugmentChain(TEAugments.MACHINE_SPEED, augLevel)) {
-				// secondaryChance += TEAugments.MACHINE_SPEED_SECONDARY_MOD[augLevel]; TODO: May bring this back; not sure.
 				processMod = Math.max(processMod, TEAugments.MACHINE_SPEED_PROCESS_MOD[augLevel]);
 				energyMod = Math.max(energyMod, TEAugments.MACHINE_SPEED_ENERGY_MOD[augLevel]);
 				installed = true;
@@ -526,16 +506,18 @@ public abstract class TileMachineBase extends TileAugmentable {
 
 	/* IReconfigurableFacing */
 	@Override
-	public boolean setFacing(int side) {
+	public boolean setFacing(EnumFacing side) {
 
-		if (side < 0 || side > 5) {
+		int sideInt = side.ordinal();
+
+		if (sideInt < 0 || sideInt > 5) {
 			return false;
 		}
-		if (!allowYAxisFacing() && side < 2) {
+		if (!allowYAxisFacing() && sideInt < 2) {
 			return false;
 		}
-		sideCache[side] = 0;
-		facing = (byte) side;
+		facing = (byte) sideInt;
+		sideCache[facing] = 0;
 		markDirty();
 		sendUpdatePacket(Side.CLIENT);
 		return true;
@@ -543,26 +525,16 @@ public abstract class TileMachineBase extends TileAugmentable {
 
 	/* ISidedTexture */
 	@Override
-	public IIcon getTexture(int side, int pass) {
+	public TextureAtlasSprite getTexture(EnumFacing side, int pass) {
 
-		if (pass == 0) {
-			if (side == 0) {
-				return BlockMachine.machineBottom;
-			} else if (side == 1) {
-				return BlockMachine.machineTop;
-			}
-			return side != facing ? BlockMachine.machineSide : isActive ? BlockMachine.machineActive[type] : BlockMachine.machineFace[type];
-		} else if (side < 6) {
-			return IconRegistry.getIcon(TEProps.textureSelection, sideConfig.sideTex[sideCache[side]]);
-		}
-		return BlockMachine.machineSide;
+		return null;
 	}
 
 	/* ISoundSource */
 	@Override
 	public String getSoundName() {
 
-		return enableSound[type] ? sounds[type] : null;
+		return ENABLE_SOUND[type] ? SOUNDS[type] : null;
 	}
 
 }

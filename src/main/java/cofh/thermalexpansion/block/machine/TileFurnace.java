@@ -2,45 +2,46 @@ package cofh.thermalexpansion.block.machine;
 
 import cofh.api.item.IAugmentItem;
 import cofh.core.util.CoreUtils;
+import cofh.lib.util.helpers.ItemHelper;
 import cofh.lib.util.helpers.MathHelper;
 import cofh.thermalexpansion.ThermalExpansion;
-import cofh.thermalexpansion.block.machine.BlockMachine.Types;
 import cofh.thermalexpansion.gui.client.machine.GuiFurnace;
 import cofh.thermalexpansion.gui.container.machine.ContainerFurnace;
 import cofh.thermalexpansion.item.TEAugments;
 import cofh.thermalexpansion.util.crafting.FurnaceManager;
 import cofh.thermalexpansion.util.crafting.FurnaceManager.RecipeFurnace;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumFacing;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 
 public class TileFurnace extends TileMachineBase {
 
 	public static void initialize() {
 
-		int type = BlockMachine.Types.FURNACE.ordinal();
+		int type = BlockMachine.Type.FURNACE.ordinal();
 
-		defaultSideConfig[type] = new SideConfig();
-		defaultSideConfig[type].numConfig = 4;
-		defaultSideConfig[type].slotGroups = new int[][] { {}, { 0 }, { 1 }, { 0, 1 } };
-		defaultSideConfig[type].allowInsertionSide = new boolean[] { false, true, false, true };
-		defaultSideConfig[type].allowExtractionSide = new boolean[] { false, true, true, true };
-		defaultSideConfig[type].allowInsertionSlot = new boolean[] { true, false, false };
-		defaultSideConfig[type].allowExtractionSlot = new boolean[] { true, true, false };
-		defaultSideConfig[type].sideTex = new int[] { 0, 1, 4, 7 };
-		defaultSideConfig[type].defaultSides = new byte[] { 1, 1, 2, 2, 2, 2 };
+		DEFAULT_SIDE_CONFIG[type] = new SideConfig();
+		DEFAULT_SIDE_CONFIG[type].numConfig = 4;
+		DEFAULT_SIDE_CONFIG[type].slotGroups = new int[][] { {}, { 0 }, { 1 }, { 0, 1 } };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSide = new boolean[] { false, true, false, true };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSide = new boolean[] { false, true, true, true };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSlot = new boolean[] { true, false, false };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSlot = new boolean[] { true, true, false };
+		DEFAULT_SIDE_CONFIG[type].sideTex = new int[] { 0, 1, 4, 7 };
+		DEFAULT_SIDE_CONFIG[type].defaultSides = new byte[] { 1, 1, 2, 2, 2, 2 };
 
 		String category = "Machine.Furnace";
-		int basePower = MathHelper.clamp(ThermalExpansion.config.get(category, "BasePower", 20), 10, 500);
-		ThermalExpansion.config.set(category, "BasePower", basePower);
-		defaultEnergyConfig[type] = new EnergyConfig();
-		defaultEnergyConfig[type].setParamsPower(basePower);
+		int basePower = MathHelper.clamp(ThermalExpansion.CONFIG.get(category, "BasePower", 20), 10, 500);
+		ThermalExpansion.CONFIG.set(category, "BasePower", basePower);
+		DEFAULT_ENERGY_CONFIG[type] = new EnergyConfig();
+		DEFAULT_ENERGY_CONFIG[type].setParamsPower(basePower);
 
-		sounds[type] = CoreUtils.getSoundName(ThermalExpansion.modId, "blockMachineFurnace");
+		SOUNDS[type] = CoreUtils.getSoundName(ThermalExpansion.modId, "blockMachineFurnace");
 
-		GameRegistry.registerTileEntity(TileFurnace.class, "thermalexpansion.Furnace");
+		GameRegistry.registerTileEntity(TileFurnace.class, "thermalexpansion.machineFurnace");
 	}
 
 	int inputTracker;
@@ -50,7 +51,7 @@ public class TileFurnace extends TileMachineBase {
 
 	public TileFurnace() {
 
-		super(Types.FURNACE);
+		super(BlockMachine.Type.FURNACE);
 		inventory = new ItemStack[1 + 1 + 1];
 	}
 
@@ -113,7 +114,7 @@ public class TileFurnace extends TileMachineBase {
 			processRem = 0;
 			return;
 		}
-		ItemStack output = recipe.getOutput();
+		ItemStack output = ItemHelper.cloneStack(recipe.getOutput());
 		if (inventory[1] == null) {
 			inventory[1] = output;
 		} else {
@@ -139,7 +140,7 @@ public class TileFurnace extends TileMachineBase {
 		for (int i = inputTracker + 1; i <= inputTracker + 6; i++) {
 			side = i % 6;
 			if (sideCache[side] == 1) {
-				if (extractItem(0, AUTO_TRANSFER[level], side)) {
+				if (extractItem(0, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					inputTracker = side;
 					break;
 				}
@@ -160,7 +161,7 @@ public class TileFurnace extends TileMachineBase {
 		for (int i = outputTracker + 1; i <= outputTracker + 6; i++) {
 			side = i % 6;
 			if (sideCache[side] == 2) {
-				if (transferItem(1, AUTO_TRANSFER[level], side)) {
+				if (transferItem(1, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					outputTracker = side;
 					break;
 				}

@@ -1,60 +1,42 @@
 package cofh.thermalexpansion.block.device;
 
 import cofh.api.tileentity.IRedstoneControl.ControlMode;
-import cofh.core.item.ItemBlockBase;
-import cofh.lib.util.helpers.AugmentHelper;
+import cofh.core.item.ItemBlockCoFHBase;
 import cofh.lib.util.helpers.EnergyHelper;
 import cofh.lib.util.helpers.ItemHelper;
 import cofh.lib.util.helpers.RedstoneControlHelper;
-import cofh.lib.util.helpers.SecurityHelper;
-import cofh.lib.util.helpers.StringHelper;
-import cofh.thermalexpansion.util.helpers.ReconfigurableHelper;
-import java.util.List;
+import cofh.thermalexpansion.util.ReconfigurableHelper;
+
 import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 
-public class ItemBlockDevice extends ItemBlockBase {
-
-	public static ItemStack setDefaultTag(ItemStack container) {
-
-		ReconfigurableHelper.setFacing(container, 3);
-		ReconfigurableHelper.setSideCache(container, TileDeviceBase.defaultSideConfig[container.getItemDamage()].defaultSides);
-		RedstoneControlHelper.setControl(container, ControlMode.DISABLED);
-		EnergyHelper.setDefaultEnergyTag(container, 0);
-		AugmentHelper.writeAugments(container, BlockDevice.defaultAugments);
-
-		return container;
-	}
+public class ItemBlockDevice extends ItemBlockCoFHBase {
 
 	public ItemBlockDevice(Block block) {
 
 		super(block);
+		setHasSubtypes(true);
+		setMaxDamage(0);
+		setNoRepair();
 	}
 
 	@Override
 	public String getUnlocalizedName(ItemStack stack) {
 
-		return "tile.thermalexpansion.device." + BlockDevice.NAMES[ItemHelper.getItemDamage(stack)] + ".name";
+		return "tile.thermalexpansion.device." + BlockDevice.Type.byMetadata(ItemHelper.getItemDamage(stack)).getName() + ".name";
 	}
 
-	@Override
-	public void addInformation(ItemStack stack, EntityPlayer player, List list, boolean check) {
+	/* HELPERS */
+	public static ItemStack setDefaultTag(ItemStack container) {
 
-		SecurityHelper.addOwnerInformation(stack, list);
-		if (StringHelper.displayShiftForDetail && !StringHelper.isShiftKeyDown()) {
-			list.add(StringHelper.shiftForDetails());
-		}
-		if (!StringHelper.isShiftKeyDown()) {
-			return;
-		}
-		SecurityHelper.addAccessInformation(stack, list);
-		list.add(StringHelper.getInfoText("info.thermalexpansion.device." + BlockDevice.NAMES[ItemHelper.getItemDamage(stack)]));
+		ReconfigurableHelper.setFacing(container, 3);
+		ReconfigurableHelper.setSideCache(container, TileDeviceBase.DEFAULT_SIDE_CONFIG[container.getItemDamage()].defaultSides);
+		RedstoneControlHelper.setControl(container, ControlMode.DISABLED);
+		EnergyHelper.setDefaultEnergyTag(container, 0);
+		// TODO: FIX
+		// AugmentHelper.writeAugments(container, BlockDevice.defaultAugments);
 
-		if (ItemHelper.getItemDamage(stack) == BlockDevice.Types.WORKBENCH_FALSE.ordinal()) {
-			ItemHelper.addInventoryInformation(stack, list, 0, 20);
-		}
-
+		return container;
 	}
 
 }

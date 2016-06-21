@@ -1,16 +1,15 @@
 package cofh.thermalexpansion.gui;
 
 import cofh.thermalexpansion.ThermalExpansion;
-import cpw.mods.fml.client.config.DummyConfigElement.DummyCategoryElement;
-import cpw.mods.fml.client.config.GuiConfig;
-import cpw.mods.fml.client.config.IConfigElement;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraftforge.common.config.ConfigCategory;
 import net.minecraftforge.common.config.ConfigElement;
+import net.minecraftforge.fml.client.config.DummyConfigElement.DummyCategoryElement;
+import net.minecraftforge.fml.client.config.GuiConfig;
+import net.minecraftforge.fml.client.config.IConfigElement;
 
 public class GuiConfigTE extends GuiConfig {
 
@@ -39,7 +38,7 @@ public class GuiConfigTE extends GuiConfig {
 		List<IConfigElement> list = new ArrayList<IConfigElement>();
 
 		for (int i = 0; i < CATEGORIES_CLIENT.length; i++) {
-			list.add(new ConfigElement<ConfigCategory>(ThermalExpansion.configClient.getCategory(CATEGORIES_CLIENT[i])));
+			list.add(new ConfigElement(ThermalExpansion.CONFIG_CLIENT.getCategory(CATEGORIES_CLIENT[i])));
 		}
 		return list;
 	}
@@ -50,7 +49,7 @@ public class GuiConfigTE extends GuiConfig {
 		List<IConfigElement> list = new ArrayList<IConfigElement>();
 
 		for (int i = 0; i < CATEGORIES_COMMON.length; i++) {
-			list.add(new ConfigElement<ConfigCategory>(ThermalExpansion.config.getCategory(CATEGORIES_COMMON[i])));
+			list.add(new ConfigElement(ThermalExpansion.CONFIG.getCategory(CATEGORIES_COMMON[i])));
 		}
 		return list;
 	}

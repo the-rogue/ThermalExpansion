@@ -5,19 +5,21 @@ import cofh.api.tileentity.IAugmentable;
 import cofh.api.tileentity.IEnergyInfo;
 import cofh.core.network.PacketCoFHBase;
 import cofh.core.util.fluid.FluidTankAdv;
+import cofh.lib.util.helpers.AugmentHelper;
 import cofh.lib.util.helpers.BlockHelper;
 import cofh.lib.util.helpers.RedstoneControlHelper;
 import cofh.lib.util.helpers.ServerHelper;
 import cofh.thermalexpansion.item.TEAugments;
-import cofh.thermalexpansion.util.Utils;
-import cofh.thermalexpansion.util.helpers.ReconfigurableHelper;
-import cpw.mods.fml.relauncher.Side;
+import cofh.thermalexpansion.util.ReconfigurableHelper;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.ISidedInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraft.util.EnumFacing;
 import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fml.relauncher.Side;
 
 public abstract class TileAugmentable extends TileReconfigurable implements IAugmentable, IEnergyInfo, ISidedInventory {
 
@@ -51,12 +53,12 @@ public abstract class TileAugmentable extends TileReconfigurable implements IAug
 			sideCache[0] = storedSideCache[0];
 			sideCache[1] = storedSideCache[1];
 			sideCache[facing] = storedSideCache[storedFacing];
-			sideCache[BlockHelper.getLeftSide(facing)] = storedSideCache[BlockHelper.getLeftSide(storedFacing)];
-			sideCache[BlockHelper.getRightSide(facing)] = storedSideCache[BlockHelper.getRightSide(storedFacing)];
-			sideCache[BlockHelper.getOppositeSide(facing)] = storedSideCache[BlockHelper.getOppositeSide(storedFacing)];
+			sideCache[BlockHelper.SIDE_LEFT[facing]] = storedSideCache[BlockHelper.SIDE_LEFT[storedFacing]];
+			sideCache[BlockHelper.SIDE_RIGHT[facing]] = storedSideCache[BlockHelper.SIDE_RIGHT[storedFacing]];
+			sideCache[BlockHelper.SIDE_OPPOSITE[facing]] = storedSideCache[BlockHelper.SIDE_OPPOSITE[storedFacing]];
 
 			for (int i = 0; i < 6; i++) {
-				if (sideCache[i] >= getNumConfig(i)) {
+				if (sideCache[i] >= getNumConfig(EnumFacing.VALUES[i])) {
 					sideCache[i] = 0;
 				}
 			}
@@ -220,7 +222,7 @@ public abstract class TileAugmentable extends TileReconfigurable implements IAug
 		resetAugments();
 		for (int i = 0; i < augments.length; i++) {
 			augmentStatus[i] = false;
-			if (Utils.isAugmentItem(augments[i])) {
+			if (AugmentHelper.isAugmentItem(augments[i])) {
 				augmentStatus[i] = installAugment(i);
 			}
 		}
@@ -234,7 +236,7 @@ public abstract class TileAugmentable extends TileReconfigurable implements IAug
 	protected boolean hasAugment(String type, int augLevel) {
 
 		for (int i = 0; i < augments.length; i++) {
-			if (Utils.isAugmentItem(augments[i]) && ((IAugmentItem) augments[i].getItem()).getAugmentLevel(augments[i], type) == augLevel) {
+			if (AugmentHelper.isAugmentItem(augments[i]) && ((IAugmentItem) augments[i].getItem()).getAugmentLevel(augments[i], type) == augLevel) {
 				return true;
 			}
 		}
@@ -244,7 +246,7 @@ public abstract class TileAugmentable extends TileReconfigurable implements IAug
 	protected boolean hasDuplicateAugment(String type, int augLevel, int slot) {
 
 		for (int i = 0; i < augments.length; i++) {
-			if (i != slot && Utils.isAugmentItem(augments[i]) && ((IAugmentItem) augments[i].getItem()).getAugmentLevel(augments[i], type) == augLevel) {
+			if (i != slot && AugmentHelper.isAugmentItem(augments[i]) && ((IAugmentItem) augments[i].getItem()).getAugmentLevel(augments[i], type) == augLevel) {
 				return true;
 			}
 		}
@@ -330,19 +332,19 @@ public abstract class TileAugmentable extends TileReconfigurable implements IAug
 
 	/* IReconfigurableSides */
 	@Override
-	public boolean decrSide(int side) {
+	public boolean decrSide(EnumFacing side) {
 
 		return augmentReconfigSides ? super.decrSide(side) : false;
 	}
 
 	@Override
-	public boolean incrSide(int side) {
+	public boolean incrSide(EnumFacing side) {
 
 		return augmentReconfigSides ? super.incrSide(side) : false;
 	}
 
 	@Override
-	public boolean setSide(int side, int config) {
+	public boolean setSide(EnumFacing side, int config) {
 
 		return augmentReconfigSides ? super.setSide(side, config) : false;
 	}
@@ -354,28 +356,28 @@ public abstract class TileAugmentable extends TileReconfigurable implements IAug
 	}
 
 	@Override
-	public int getNumConfig(int side) {
+	public int getNumConfig(EnumFacing side) {
 
 		return sideConfig.numConfig;
 	}
 
 	/* ISidedInventory */
 	@Override
-	public int[] getAccessibleSlotsFromSide(int side) {
+	public int[] getSlotsForFace(EnumFacing side) {
 
-		return sideConfig.slotGroups[sideCache[side]];
+		return sideConfig.slotGroups[sideCache[side.ordinal()]];
 	}
 
 	@Override
-	public boolean canInsertItem(int slot, ItemStack stack, int side) {
+	public boolean canInsertItem(int slot, ItemStack stack, EnumFacing side) {
 
-		return sideConfig.allowInsertionSide[sideCache[side]] && sideConfig.allowInsertionSlot[slot] ? isItemValidForSlot(slot, stack) : false;
+		return sideConfig.allowInsertionSide[sideCache[side.ordinal()]] && sideConfig.allowInsertionSlot[slot] ? isItemValidForSlot(slot, stack) : false;
 	}
 
 	@Override
-	public boolean canExtractItem(int slot, ItemStack stack, int side) {
+	public boolean canExtractItem(int slot, ItemStack stack, EnumFacing side) {
 
-		return sideConfig.allowExtractionSide[sideCache[side]] && sideConfig.allowExtractionSlot[slot];
+		return sideConfig.allowExtractionSide[sideCache[side.ordinal()]] && sideConfig.allowExtractionSlot[slot];
 	}
 
 }

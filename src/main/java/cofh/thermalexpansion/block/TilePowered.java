@@ -9,30 +9,20 @@ import cofh.lib.util.helpers.EnergyHelper;
 import cofh.lib.util.helpers.MathHelper;
 
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.util.EnumFacing;
 
 public abstract class TilePowered extends TileRSControl implements IEnergyReceiver {
 
 	protected EnergyStorage energyStorage = new EnergyStorage(0);
 
-	public int getChargeSlot() {
+	protected boolean drainEnergy(int energy) {
 
-		return inventory.length - 1;
-	}
-
-	public boolean hasChargeSlot() {
-
-		return true;
+		return hasEnergy(energy) && energyStorage.extractEnergy(energy, false) == energy;
 	}
 
 	protected boolean hasEnergy(int energy) {
 
 		return energyStorage.getEnergyStored() >= energy;
-	}
-
-	protected boolean drainEnergy(int energy) {
-
-		return hasEnergy(energy) && energyStorage.extractEnergy(energy, false) == energy;
 	}
 
 	protected void chargeEnergy() {
@@ -47,6 +37,16 @@ public abstract class TilePowered extends TileRSControl implements IEnergyReceiv
 				inventory[chargeSlot] = null;
 			}
 		}
+	}
+
+	public int getChargeSlot() {
+
+		return inventory.length - 1;
+	}
+
+	public boolean hasChargeSlot() {
+
+		return true;
 	}
 
 	public final void setEnergyStored(int quantity) {
@@ -108,25 +108,25 @@ public abstract class TilePowered extends TileRSControl implements IEnergyReceiv
 
 	/* IEnergyReceiver */
 	@Override
-	public int receiveEnergy(ForgeDirection from, int maxReceive, boolean simulate) {
+	public int receiveEnergy(EnumFacing from, int maxReceive, boolean simulate) {
 
 		return energyStorage.receiveEnergy(maxReceive, simulate);
 	}
 
 	@Override
-	public int getEnergyStored(ForgeDirection from) {
+	public int getEnergyStored(EnumFacing from) {
 
 		return energyStorage.getEnergyStored();
 	}
 
 	@Override
-	public int getMaxEnergyStored(ForgeDirection from) {
+	public int getMaxEnergyStored(EnumFacing from) {
 
 		return energyStorage.getMaxEnergyStored();
 	}
 
 	@Override
-	public boolean canConnectEnergy(ForgeDirection from) {
+	public boolean canConnectEnergy(EnumFacing from) {
 
 		return energyStorage.getMaxEnergyStored() > 0;
 	}

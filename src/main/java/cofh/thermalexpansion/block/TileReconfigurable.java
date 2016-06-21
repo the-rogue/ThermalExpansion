@@ -2,24 +2,24 @@ package cofh.thermalexpansion.block;
 
 import cofh.api.tileentity.IReconfigurableFacing;
 import cofh.api.tileentity.IReconfigurableSides;
-import cofh.api.tileentity.ISidedTexture;
 import cofh.core.network.PacketCoFHBase;
 import cofh.lib.util.helpers.BlockHelper;
-import cofh.thermalexpansion.util.helpers.ReconfigurableHelper;
-import cpw.mods.fml.relauncher.Side;
+import cofh.thermalexpansion.util.ReconfigurableHelper;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.IIcon;
+import net.minecraft.util.EnumFacing;
+import net.minecraftforge.fml.relauncher.Side;
 
-public abstract class TileReconfigurable extends TilePowered implements IReconfigurableFacing, IReconfigurableSides, ISidedTexture {
+public abstract class TileReconfigurable extends TilePowered implements IReconfigurableFacing, IReconfigurableSides {
 
 	protected byte facing = 3;
 	public byte[] sideCache = { 0, 0, 0, 0, 0, 0 };
 
 	@Override
-	public boolean onWrench(EntityPlayer player, int hitSide) {
+	public boolean onWrench(EntityPlayer player, EnumFacing side) {
 
-		return rotateBlock();
+		return rotateBlock(side);
 	}
 
 	public byte[] getDefaultSides() {
@@ -52,7 +52,7 @@ public abstract class TileReconfigurable extends TilePowered implements IReconfi
 		facing = ReconfigurableHelper.getFacingFromNBT(nbt);
 		sideCache = ReconfigurableHelper.getSideCacheFromNBT(nbt, getDefaultSides());
 		for (int i = 0; i < 6; i++) {
-			if (sideCache[i] >= getNumConfig(i)) {
+			if (sideCache[i] >= getNumConfig(EnumFacing.VALUES[i])) {
 				sideCache[i] = 0;
 			}
 		}
@@ -88,7 +88,7 @@ public abstract class TileReconfigurable extends TilePowered implements IReconfi
 		payload.getByteArray(sideCache);
 
 		for (int i = 0; i < 6; i++) {
-			if (sideCache[i] >= getNumConfig(i)) {
+			if (sideCache[i] >= getNumConfig(EnumFacing.VALUES[i])) {
 				sideCache[i] = 0;
 			}
 		}
@@ -114,7 +114,7 @@ public abstract class TileReconfigurable extends TilePowered implements IReconfi
 	}
 
 	@Override
-	public boolean rotateBlock() {
+	public boolean rotateBlock(EnumFacing side) {
 
 		if (allowYAxisFacing()) {
 			byte[] tempCache = new byte[6];
@@ -173,15 +173,17 @@ public abstract class TileReconfigurable extends TilePowered implements IReconfi
 	}
 
 	@Override
-	public boolean setFacing(int side) {
+	public boolean setFacing(EnumFacing side) {
 
-		if (side < 0 || side > 5) {
+		int sideInt = side.ordinal();
+
+		if (sideInt < 0 || sideInt > 5) {
 			return false;
 		}
-		if (!allowYAxisFacing() && side < 2) {
+		if (!allowYAxisFacing() && sideInt < 2) {
 			return false;
 		}
-		facing = (byte) side;
+		facing = (byte) sideInt;
 		markDirty();
 		sendUpdatePacket(Side.CLIENT);
 		return true;
@@ -189,36 +191,42 @@ public abstract class TileReconfigurable extends TilePowered implements IReconfi
 
 	/* IReconfigurableSides */
 	@Override
-	public boolean decrSide(int side) {
+	public boolean decrSide(EnumFacing side) {
 
-		if (side == facing) {
+		int sideInt = side.ordinal();
+
+		if (sideInt == facing) {
 			return false;
 		}
-		sideCache[side] += getNumConfig(side) - 1;
-		sideCache[side] %= getNumConfig(side);
+		sideCache[sideInt] += getNumConfig(side) - 1;
+		sideCache[sideInt] %= getNumConfig(side);
 		sendUpdatePacket(Side.SERVER);
 		return true;
 	}
 
 	@Override
-	public boolean incrSide(int side) {
+	public boolean incrSide(EnumFacing side) {
 
-		if (side == facing) {
+		int sideInt = side.ordinal();
+
+		if (sideInt == facing) {
 			return false;
 		}
-		sideCache[side] += 1;
-		sideCache[side] %= getNumConfig(side);
+		sideCache[sideInt] += 1;
+		sideCache[sideInt] %= getNumConfig(side);
 		sendUpdatePacket(Side.SERVER);
 		return true;
 	}
 
 	@Override
-	public boolean setSide(int side, int config) {
+	public boolean setSide(EnumFacing side, int config) {
 
-		if (side == facing || sideCache[side] == config || config >= getNumConfig(side)) {
+		int sideInt = side.ordinal();
+
+		if (sideInt == facing || sideCache[sideInt] == config || config >= getNumConfig(side)) {
 			return false;
 		}
-		sideCache[side] = (byte) config;
+		sideCache[sideInt] = (byte) config;
 		sendUpdatePacket(Side.SERVER);
 		return true;
 	}
@@ -240,10 +248,6 @@ public abstract class TileReconfigurable extends TilePowered implements IReconfi
 	}
 
 	@Override
-	public abstract int getNumConfig(int side);
-
-	/* ISidedTexture */
-	@Override
-	public abstract IIcon getTexture(int side, int pass);
+	public abstract int getNumConfig(EnumFacing side);
 
 }

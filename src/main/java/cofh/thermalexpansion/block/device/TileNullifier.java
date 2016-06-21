@@ -1,44 +1,39 @@
 package cofh.thermalexpansion.block.device;
 
 import cofh.core.CoFHProps;
-import cofh.core.render.IconRegistry;
-import cofh.lib.render.RenderHelper;
 import cofh.lib.util.helpers.FluidHelper;
-import cofh.thermalexpansion.block.device.BlockDevice.Types;
-import cofh.thermalexpansion.core.TEProps;
 import cofh.thermalexpansion.gui.client.device.GuiNullifier;
 import cofh.thermalexpansion.gui.container.device.ContainerNullifier;
-import cpw.mods.fml.common.registry.GameRegistry;
-import cpw.mods.fml.relauncher.Side;
 
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.util.EnumFacing;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.FluidTankInfo;
 import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraftforge.fml.relauncher.Side;
 
 public class TileNullifier extends TileDeviceBase implements IFluidHandler {
 
 	public static void initialize() {
 
-		int type = BlockDevice.Types.NULLIFIER.ordinal();
+		int type = BlockDevice.Type.NULLIFIER.ordinal();
 
-		defaultSideConfig[type] = new SideConfig();
-		defaultSideConfig[type].numConfig = 2;
-		defaultSideConfig[type].slotGroups = new int[][] { {}, { 0 }, {} };
-		defaultSideConfig[type].allowInsertionSide = new boolean[] { false, false, false };
-		defaultSideConfig[type].allowExtractionSide = new boolean[] { false, false, false };
-		defaultSideConfig[type].allowInsertionSlot = new boolean[] { true };
-		defaultSideConfig[type].allowExtractionSlot = new boolean[] { false };
-		defaultSideConfig[type].sideTex = new int[] { 0, 1, 4 };
-		defaultSideConfig[type].defaultSides = new byte[] { 0, 0, 0, 0, 0, 0 };
+		DEFAULT_SIDE_CONFIG[type] = new SideConfig();
+		DEFAULT_SIDE_CONFIG[type].numConfig = 2;
+		DEFAULT_SIDE_CONFIG[type].slotGroups = new int[][] { {}, { 0 }, {} };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSide = new boolean[] { false, false, false };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSide = new boolean[] { false, false, false };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSlot = new boolean[] { true };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSlot = new boolean[] { false };
+		DEFAULT_SIDE_CONFIG[type].sideTex = new int[] { 0, 1, 4 };
+		DEFAULT_SIDE_CONFIG[type].defaultSides = new byte[] { 0, 0, 0, 0, 0, 0 };
 
-		GameRegistry.registerTileEntity(TileNullifier.class, "thermalexpansion.Nullifier");
+		GameRegistry.registerTileEntity(TileNullifier.class, "thermalexpansion.deviceNullifier");
 	}
 
 	protected static final int[] SLOTS = { 0 };
@@ -46,14 +41,8 @@ public class TileNullifier extends TileDeviceBase implements IFluidHandler {
 
 	public TileNullifier() {
 
-		super(Types.NULLIFIER);
+		super(BlockDevice.Type.NULLIFIER);
 		inventory = new ItemStack[1];
-	}
-
-	@Override
-	public boolean canUpdate() {
-
-		return false;
 	}
 
 	@Override
@@ -75,9 +64,9 @@ public class TileNullifier extends TileDeviceBase implements IFluidHandler {
 		return true;
 	}
 
-	protected boolean isSideAccessible(int side) {
+	protected boolean isSideAccessible(EnumFacing side) {
 
-		return sideCache[side] == 1 && redstoneControlOrDisable();
+		return side != null && sideCache[side.ordinal()] == 1 && redstoneControlOrDisable();
 	}
 
 	/* GUI METHODS */
@@ -106,83 +95,49 @@ public class TileNullifier extends TileDeviceBase implements IFluidHandler {
 
 	/* IFluidHandler */
 	@Override
-	public int fill(ForgeDirection from, FluidStack resource, boolean doFill) {
+	public int fill(EnumFacing from, FluidStack resource, boolean doFill) {
 
-		return isSideAccessible(from.ordinal()) ? resource.amount : 0;
+		return isSideAccessible(from) ? resource.amount : 0;
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, FluidStack resource, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, FluidStack resource, boolean doDrain) {
 
 		return null;
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, int maxDrain, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, int maxDrain, boolean doDrain) {
 
 		return null;
 	}
 
 	@Override
-	public boolean canFill(ForgeDirection from, Fluid fluid) {
+	public boolean canFill(EnumFacing from, Fluid fluid) {
 
 		return true;
 	}
 
 	@Override
-	public boolean canDrain(ForgeDirection from, Fluid fluid) {
+	public boolean canDrain(EnumFacing from, Fluid fluid) {
 
 		return false;
 	}
 
 	@Override
-	public FluidTankInfo[] getTankInfo(ForgeDirection from) {
+	public FluidTankInfo[] getTankInfo(EnumFacing from) {
 
 		return null;
 	}
 
 	/* IInventory */
 	@Override
-	public ItemStack getStackInSlot(int slot) {
+	public void setInventorySlotContents(int index, ItemStack stack) {
 
-		return inventory[slot];
-	}
-
-	@Override
-	public ItemStack decrStackSize(int slot, int amount) {
-
-		if (inventory[slot] == null) {
-			return null;
-		}
-		if (inventory[slot].stackSize <= amount) {
-			amount = inventory[slot].stackSize;
-		}
-		ItemStack stack = inventory[slot].splitStack(amount);
-
-		if (inventory[slot].stackSize <= 0) {
-			inventory[slot] = null;
-		}
-		return stack;
-	}
-
-	@Override
-	public ItemStack getStackInSlotOnClosing(int slot) {
-
-		if (inventory[slot] == null) {
-			return null;
-		}
-		ItemStack stack = inventory[slot];
-		inventory[slot] = null;
-		return stack;
-	}
-
-	@Override
-	public void setInventorySlotContents(int slot, ItemStack stack) {
-
-		if (slot == 0) {
+		if (index == 0) {
 			return;
 		}
-		inventory[slot] = stack;
+		inventory[index] = stack;
 
 		if (stack != null && stack.stackSize > getInventoryStackLimit()) {
 			stack.stackSize = getInventoryStackLimit();
@@ -191,47 +146,35 @@ public class TileNullifier extends TileDeviceBase implements IFluidHandler {
 
 	/* IReconfigurableFacing */
 	@Override
-	public boolean setFacing(int side) {
+	public boolean setFacing(EnumFacing side) {
 
-		if (side < 0 || side > 5) {
+		int sideInt = side.ordinal();
+
+		if (sideInt < 0 || sideInt > 5) {
 			return false;
 		}
-		facing = (byte) side;
+		facing = (byte) sideInt;
 		sideCache[facing] = 1;
 		markDirty();
 		sendUpdatePacket(Side.CLIENT);
 		return true;
 	}
 
-	/* ISidedTexture */
-	@Override
-	public IIcon getTexture(int side, int pass) {
-
-		if (pass == 0) {
-			return side != facing ? BlockDevice.deviceSide : redstoneControlOrDisable() ? RenderHelper.getFluidTexture(renderFluid)
-					: BlockDevice.deviceFace[type];
-		} else if (side < 6) {
-			return side != facing ? IconRegistry.getIcon(TEProps.textureSelection, sideConfig.sideTex[sideCache[side]])
-					: redstoneControlOrDisable() ? BlockDevice.deviceActive[type] : BlockDevice.deviceFace[type];
-		}
-		return BlockDevice.deviceSide;
-	}
-
 	/* ISidedInventory */
 	@Override
-	public int[] getAccessibleSlotsFromSide(int side) {
+	public int[] getSlotsForFace(EnumFacing side) {
 
 		return isSideAccessible(side) ? SLOTS : CoFHProps.EMPTY_INVENTORY;
 	}
 
 	@Override
-	public boolean canInsertItem(int slot, ItemStack stack, int side) {
+	public boolean canInsertItem(int slot, ItemStack stack, EnumFacing side) {
 
 		return isSideAccessible(side);
 	}
 
 	@Override
-	public boolean canExtractItem(int slot, ItemStack stack, int side) {
+	public boolean canExtractItem(int slot, ItemStack stack, EnumFacing side) {
 
 		return false;
 	}

@@ -1,78 +1,145 @@
 package cofh.thermalexpansion.block.dynamo;
 
-import cofh.core.render.IconRegistry;
-import cofh.core.util.crafting.RecipeAugmentable;
 import cofh.lib.util.helpers.BlockHelper;
 import cofh.lib.util.helpers.FluidHelper;
-import cofh.lib.util.helpers.ItemHelper;
-import cofh.lib.util.helpers.StringHelper;
-import cofh.repack.codechicken.lib.vec.Cuboid6;
-import cofh.repack.codechicken.lib.vec.Rotation;
-import cofh.repack.codechicken.lib.vec.Vector3;
-import cofh.thermalexpansion.ThermalExpansion;
 import cofh.thermalexpansion.block.BlockTEBase;
-import cofh.thermalexpansion.core.TEProps;
-import cofh.thermalexpansion.item.TEAugments;
-import cofh.thermalexpansion.item.TEItems;
-import cofh.thermalexpansion.util.crafting.TECraftingHandler;
-import cpw.mods.fml.common.registry.GameRegistry;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 
 import java.util.List;
 
 import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
+import net.minecraft.block.properties.IProperty;
+import net.minecraft.block.properties.PropertyBool;
+import net.minecraft.block.properties.PropertyEnum;
+import net.minecraft.block.properties.PropertyInteger;
+import net.minecraft.block.state.BlockState;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.IStringSerializable;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraftforge.common.property.IUnlistedProperty;
+import net.minecraftforge.common.property.Properties;
 import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 public class BlockDynamo extends BlockTEBase {
 
-	static AxisAlignedBB[] boundingBox = new AxisAlignedBB[12];
-
-	static {
-		Cuboid6 bb = new Cuboid6(0, 0, 0, 1, 10 / 16., 1);
-		Vector3 p = new Vector3(0.5, 0.5, 0.5);
-		boundingBox[1] = bb.toAABB();
-		boundingBox[0] = bb.apply(Rotation.sideRotations[1].at(p)).toAABB();
-		for (int i = 2; i < 6; ++i) {
-			boundingBox[i] = bb.copy().apply(Rotation.sideRotations[i].at(p)).toAABB();
-		}
-
-		bb = new Cuboid6(.25, .5, .25, .75, 1, .75);
-		boundingBox[1 + 6] = bb.toAABB();
-		boundingBox[0 + 6] = bb.apply(Rotation.sideRotations[1].at(p)).toAABB();
-		for (int i = 2; i < 6; ++i) {
-			boundingBox[i + 6] = bb.copy().apply(Rotation.sideRotations[i].at(p)).toAABB();
-		}
-	}
+	public static final PropertyEnum<BlockDynamo.Type> VARIANT = PropertyEnum.<BlockDynamo.Type> create("type", BlockDynamo.Type.class);
+	public static final IUnlistedProperty<Boolean> ACTIVE = Properties.toUnlisted(PropertyBool.create("active"));
+	public static final IUnlistedProperty<Integer> FACING = Properties.toUnlisted(PropertyInteger.create("facing", 0, 5));
 
 	public BlockDynamo() {
 
 		super(Material.iron);
+
+		setUnlocalizedName("dynamo");
+
 		setHardness(15.0F);
 		setResistance(25.0F);
-		setBlockName("thermalexpansion.dynamo");
 	}
 
 	@Override
+	protected BlockState createBlockState() {
+
+		return new BlockState(this, new IProperty[] { VARIANT });
+	}
+
+	@Override
+	@SideOnly(Side.CLIENT)
+	public void getSubBlocks(Item item, CreativeTabs tab, List list) {
+
+		for (int i = 0; i < BlockDynamo.Type.METADATA_LOOKUP.length; i++) {
+			list.add(new ItemStack(item, 1, i));
+		}
+	}
+
+	@Override
+	public int getDamageValue(World world, BlockPos pos) {
+
+		IBlockState state = world.getBlockState(pos);
+		return state.getBlock() != this ? 0 : state.getValue(VARIANT).getMetadata();
+	}
+
+	@Override
+	public IBlockState getStateFromMeta(int meta) {
+
+		return this.getDefaultState().withProperty(VARIANT, BlockDynamo.Type.byMetadata(meta));
+	}
+
+	@Override
+	public int getMetaFromState(IBlockState state) {
+
+		return state.getValue(VARIANT).getMetadata();
+	}
+
+	@Override
+	public int damageDropped(IBlockState state) {
+
+		return state.getValue(VARIANT).getMetadata();
+	}
+
+	@Override
+	public void onBlockPlacedBy(World world, BlockPos pos, IBlockState state, EntityLivingBase placer, ItemStack stack) {
+
+		TileDynamoBase tile = (TileDynamoBase) world.getTileEntity(pos);
+
+		if (stack.hasTagCompound()) {
+			tile.readAugmentsFromNBT(stack.getTagCompound());
+			tile.installAugments();
+			tile.setEnergyStored(stack.getTagCompound().getInteger("Energy"));
+		}
+		super.onBlockPlacedBy(world, pos, state, placer, stack);
+	}
+
+	@Override
+	public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumFacing side, float hitX, float hitY, float hitZ) {
+
+		TileDynamoBase tile = (TileDynamoBase) world.getTileEntity(pos);
+
+		if (tile instanceof IFluidHandler) {
+			if (FluidHelper.fillHandlerWithContainer(world, (IFluidHandler) tile, player)) {
+				return true;
+			}
+		}
+		return super.onBlockActivated(world, pos, state, player, side, hitX, hitY, hitZ);
+	}
+
+	@Override
+	public boolean hasComparatorInputOverride() {
+
+		return true;
+	}
+
+	@Override
+	public boolean isSideSolid(IBlockAccess world, BlockPos pos, EnumFacing side) {
+
+		TileEntity tile = world.getTileEntity(pos);
+
+		if (!(tile instanceof TileDynamoBase)) {
+			return false;
+		}
+		TileDynamoBase theTile = (TileDynamoBase) tile;
+		return theTile.facing == BlockHelper.SIDE_OPPOSITE[side.ordinal()];
+	}
+
+	/* ITileEntityProvider */
+	@Override
 	public TileEntity createNewTileEntity(World world, int metadata) {
 
-		if (metadata >= Types.values().length) {
+		if (metadata >= BlockDynamo.Type.values().length) {
 			return null;
 		}
-		switch (Types.values()[metadata]) {
+		switch (BlockDynamo.Type.values()[metadata]) {
 		case STEAM:
 			return new TileDynamoSteam();
 		case MAGMATIC:
@@ -88,112 +155,18 @@ public class BlockDynamo extends BlockTEBase {
 		}
 	}
 
+	/* HELPERS */
 	@Override
-	public void addCollisionBoxesToList(World world, int x, int y, int z, AxisAlignedBB bb, List list, Entity entity) {
+	public NBTTagCompound getItemStackTag(IBlockAccess world, BlockPos pos) {
 
-		int facing = ((TileDynamoBase) world.getTileEntity(x, y, z)).facing;
-
-		AxisAlignedBB base, coil;
-		base = boundingBox[facing].copy().offset(x, y, z);
-		coil = boundingBox[facing + 6].copy().offset(x, y, z);
-
-		if (coil.intersectsWith(bb)) {
-			list.add(coil);
-		}
-
-		if (base.intersectsWith(bb)) {
-			list.add(base);
-		}
-	}
-
-	@Override
-	public void getSubBlocks(Item item, CreativeTabs tab, List list) {
-
-		for (int i = 0; i < Types.values().length; i++) {
-			list.add(ItemBlockDynamo.setDefaultTag(new ItemStack(item, 1, i)));
-		}
-	}
-
-	@Override
-	public void onBlockPlacedBy(World world, int x, int y, int z, EntityLivingBase living, ItemStack stack) {
-
-		TileDynamoBase tile = (TileDynamoBase) world.getTileEntity(x, y, z);
-
-		if (stack.stackTagCompound != null) {
-			tile.readAugmentsFromNBT(stack.stackTagCompound);
-			tile.installAugments();
-			tile.setEnergyStored(stack.stackTagCompound.getInteger("Energy"));
-		}
-		super.onBlockPlacedBy(world, x, y, z, living, stack);
-	}
-
-	@Override
-	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int hitSide, float hitX, float hitY, float hitZ) {
-
-		TileDynamoBase tile = (TileDynamoBase) world.getTileEntity(x, y, z);
-
-		if (tile instanceof IFluidHandler) {
-			if (FluidHelper.fillHandlerWithContainer(world, (IFluidHandler) tile, player)) {
-				return true;
-			}
-		}
-		return super.onBlockActivated(world, x, y, z, player, hitSide, hitX, hitY, hitZ);
-	}
-
-	@Override
-	public int getRenderBlockPass() {
-
-		return 0;
-	}
-
-	@Override
-	public int getRenderType() {
-
-		return TEProps.renderIdDynamo;
-	}
-
-	@Override
-	public boolean hasComparatorInputOverride() {
-
-		return true;
-	}
-
-	@Override
-	public boolean isSideSolid(IBlockAccess world, int x, int y, int z, ForgeDirection side) {
-
-		TileEntity tile = world.getTileEntity(x, y, z);
-
-		if (!(tile instanceof TileDynamoBase)) {
-			return false;
-		}
-		TileDynamoBase theTile = (TileDynamoBase) tile;
-		return theTile.facing == BlockHelper.SIDE_OPPOSITE[side.ordinal()];
-	}
-
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void registerBlockIcons(IIconRegister ir) {
-
-		IconRegistry.addIcon("DynamoCoilRedstone", "thermalexpansion:dynamo/Dynamo_Coil_Redstone", ir);
-
-		IconRegistry.addIcon("Dynamo" + Types.STEAM.ordinal(), "thermalexpansion:dynamo/Dynamo_Steam", ir);
-		IconRegistry.addIcon("Dynamo" + Types.MAGMATIC.ordinal(), "thermalexpansion:dynamo/Dynamo_Magmatic", ir);
-		IconRegistry.addIcon("Dynamo" + Types.COMPRESSION.ordinal(), "thermalexpansion:dynamo/Dynamo_Compression", ir);
-		IconRegistry.addIcon("Dynamo" + Types.REACTANT.ordinal(), "thermalexpansion:dynamo/Dynamo_Reactant", ir);
-		IconRegistry.addIcon("Dynamo" + Types.ENERVATION.ordinal(), "thermalexpansion:dynamo/Dynamo_Enervation", ir);
-	}
-
-	@Override
-	public NBTTagCompound getItemStackTag(World world, int x, int y, int z) {
-
-		NBTTagCompound tag = super.getItemStackTag(world, x, y, z);
-		TileDynamoBase tile = (TileDynamoBase) world.getTileEntity(x, y, z);
+		NBTTagCompound tag = super.getItemStackTag(world, pos);
+		TileDynamoBase tile = (TileDynamoBase) world.getTileEntity(pos);
 
 		if (tile != null) {
 			if (tag == null) {
 				tag = new NBTTagCompound();
 			}
-			tag.setInteger("Energy", tile.getEnergyStored(ForgeDirection.UNKNOWN));
+			tag.setInteger("Energy", tile.getEnergyStored(EnumFacing.DOWN));
 			tile.writeAugmentsToNBT(tag);
 		}
 		return tag;
@@ -201,29 +174,15 @@ public class BlockDynamo extends BlockTEBase {
 
 	/* IInitializer */
 	@Override
+	public boolean preInit() {
+
+		GameRegistry.registerBlock(this, ItemBlockDynamo.class, "dynamo");
+
+		return true;
+	}
+
+	@Override
 	public boolean initialize() {
-
-		TileDynamoBase.configure();
-		TileDynamoSteam.initialize();
-		TileDynamoMagmatic.initialize();
-		TileDynamoCompression.initialize();
-		TileDynamoReactant.initialize();
-		TileDynamoEnervation.initialize();
-
-		if (defaultRedstoneControl) {
-			defaultAugments[0] = ItemHelper.cloneStack(TEAugments.generalRedstoneControl);
-		}
-		dynamoSteam = ItemBlockDynamo.setDefaultTag(new ItemStack(this, 1, Types.STEAM.ordinal()));
-		dynamoMagmatic = ItemBlockDynamo.setDefaultTag(new ItemStack(this, 1, Types.MAGMATIC.ordinal()));
-		dynamoCompression = ItemBlockDynamo.setDefaultTag(new ItemStack(this, 1, Types.COMPRESSION.ordinal()));
-		dynamoReactant = ItemBlockDynamo.setDefaultTag(new ItemStack(this, 1, Types.REACTANT.ordinal()));
-		dynamoEnervation = ItemBlockDynamo.setDefaultTag(new ItemStack(this, 1, Types.ENERVATION.ordinal()));
-
-		GameRegistry.registerCustomItemStack("dynamoSteam", dynamoSteam);
-		GameRegistry.registerCustomItemStack("dynamoMagmatic", dynamoMagmatic);
-		GameRegistry.registerCustomItemStack("dynamoCompression", dynamoCompression);
-		GameRegistry.registerCustomItemStack("dynamoReactant", dynamoReactant);
-		GameRegistry.registerCustomItemStack("dynamoEnervation", dynamoEnervation);
 
 		return true;
 	}
@@ -231,63 +190,78 @@ public class BlockDynamo extends BlockTEBase {
 	@Override
 	public boolean postInit() {
 
-		if (enable[Types.STEAM.ordinal()]) {
-			GameRegistry.addRecipe(new RecipeAugmentable(dynamoSteam, defaultAugments, new Object[] { " C ", "GIG", "IRI", 'C', TEItems.powerCoilSilver, 'G',
-					"gearCopper", 'I', "ingotCopper", 'R', "dustRedstone" }));
-		}
-		if (enable[Types.MAGMATIC.ordinal()]) {
-			GameRegistry.addRecipe(new RecipeAugmentable(dynamoMagmatic, defaultAugments, new Object[] { " C ", "GIG", "IRI", 'C', TEItems.powerCoilSilver,
-					'G', "gearInvar", 'I', "ingotInvar", 'R', "dustRedstone" }));
-		}
-		if (enable[Types.COMPRESSION.ordinal()]) {
-			GameRegistry.addRecipe(new RecipeAugmentable(dynamoCompression, defaultAugments, new Object[] { " C ", "GIG", "IRI", 'C', TEItems.powerCoilSilver,
-					'G', "gearTin", 'I', "ingotTin", 'R', "dustRedstone" }));
-		}
-		if (enable[Types.REACTANT.ordinal()]) {
-			GameRegistry.addRecipe(new RecipeAugmentable(dynamoReactant, defaultAugments, new Object[] { " C ", "GIG", "IRI", 'C', TEItems.powerCoilSilver,
-					'G', "gearBronze", 'I', "ingotBronze", 'R', "dustRedstone" }));
-		}
-		if (enable[Types.ENERVATION.ordinal()]) {
-			GameRegistry.addRecipe(new RecipeAugmentable(dynamoEnervation, defaultAugments, new Object[] { " C ", "GIG", "IRI", 'C', TEItems.powerCoilSilver,
-					'G', "gearElectrum", 'I', "ingotElectrum", 'R', "dustRedstone" }));
-		}
-		TECraftingHandler.addSecureRecipe(dynamoSteam);
-		TECraftingHandler.addSecureRecipe(dynamoMagmatic);
-		TECraftingHandler.addSecureRecipe(dynamoCompression);
-		TECraftingHandler.addSecureRecipe(dynamoEnervation);
-		TECraftingHandler.addSecureRecipe(dynamoReactant);
-
 		return true;
 	}
 
-	public static void refreshItemStacks() {
+	/* TYPE */
+	public static enum Type implements IStringSerializable {
 
-		dynamoSteam = ItemBlockDynamo.setDefaultTag(dynamoSteam);
-		dynamoMagmatic = ItemBlockDynamo.setDefaultTag(dynamoMagmatic);
-		dynamoCompression = ItemBlockDynamo.setDefaultTag(dynamoCompression);
-		dynamoReactant = ItemBlockDynamo.setDefaultTag(dynamoReactant);
-		dynamoEnervation = ItemBlockDynamo.setDefaultTag(dynamoEnervation);
-	}
+		// @formatter:off
+		STEAM(0, "steam", dynamoSteam),
+		MAGMATIC(1, "magmatic", dynamoMagmatic),
+		COMPRESSION(2, "compression", dynamoCompression),
+		REACTANT(3, "reactant", dynamoReactant),
+		ENERVATION(4, "enervation", dynamoEnervation);
+		// @formatter:on
 
-	public static enum Types {
-		STEAM, MAGMATIC, COMPRESSION, REACTANT, ENERVATION
-	}
+		private static final BlockDynamo.Type[] METADATA_LOOKUP = new BlockDynamo.Type[values().length];
+		private final int metadata;
+		private final String name;
+		private final ItemStack stack;
 
-	public static final String[] NAMES = { "steam", "magmatic", "compression", "reactant", "enervation" };
-	public static boolean[] enable = new boolean[Types.values().length];
+		private final int light;
 
-	public static ItemStack[] defaultAugments = new ItemStack[4];
+		private Type(int metadata, String name, ItemStack stack, int light) {
 
-	public static boolean defaultRedstoneControl = true;
+			this.metadata = metadata;
+			this.name = name;
+			this.stack = stack;
 
-	static {
-		String category = "Dynamo.";
+			this.light = light;
+		}
 
-		for (int i = 0; i < Types.values().length; i++) {
-			enable[i] = ThermalExpansion.config.get(category + StringHelper.titleCase(NAMES[i]), "Recipe.Enable", true);
+		private Type(int metadata, String name, ItemStack stack) {
+
+			this(metadata, name, stack, 0);
+		}
+
+		public int getMetadata() {
+
+			return this.metadata;
+		}
+
+		@Override
+		public String getName() {
+
+			return this.name;
+		}
+
+		public ItemStack getStack() {
+
+			return this.stack;
+		}
+
+		public int getLight() {
+
+			return light;
+		}
+
+		public static Type byMetadata(int metadata) {
+
+			if (metadata < 0 || metadata >= METADATA_LOOKUP.length) {
+				metadata = 0;
+			}
+			return METADATA_LOOKUP[metadata];
+		}
+
+		static {
+			for (Type type : values()) {
+				METADATA_LOOKUP[type.getMetadata()] = type;
+			}
 		}
 	}
 
+	/* REFERENCES */
 	public static ItemStack dynamoSteam;
 	public static ItemStack dynamoMagmatic;
 	public static ItemStack dynamoCompression;

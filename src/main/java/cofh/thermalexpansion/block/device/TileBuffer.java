@@ -4,33 +4,34 @@ import cofh.core.CoFHProps;
 import cofh.core.network.PacketCoFHBase;
 import cofh.lib.util.helpers.MathHelper;
 import cofh.lib.util.helpers.ServerHelper;
-import cofh.thermalexpansion.block.device.BlockDevice.Types;
 import cofh.thermalexpansion.gui.client.device.GuiBuffer;
 import cofh.thermalexpansion.gui.container.device.ContainerBuffer;
-import cpw.mods.fml.common.registry.GameRegistry;
-import cpw.mods.fml.relauncher.Side;
 
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.ITickable;
+import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraftforge.fml.relauncher.Side;
 
-public class TileBuffer extends TileDeviceBase {
+public class TileBuffer extends TileDeviceBase implements ITickable {
 
 	public static void initialize() {
 
-		int type = BlockDevice.Types.BUFFER.ordinal();
+		int type = BlockDevice.Type.BUFFER.ordinal();
 
-		defaultSideConfig[type] = new SideConfig();
-		defaultSideConfig[type].numConfig = 4;
-		defaultSideConfig[type].slotGroups = new int[][] { {}, { 0, 1, 2, 3, 4, 5, 6, 7, 8 }, { 0, 1, 2, 3, 4, 5, 6, 7, 8 }, { 0, 1, 2, 3, 4, 5, 6, 7, 8 } };
-		defaultSideConfig[type].allowInsertionSide = new boolean[] { false, true, false, true };
-		defaultSideConfig[type].allowExtractionSide = new boolean[] { false, false, true, true };
-		defaultSideConfig[type].allowInsertionSlot = new boolean[] { true, true, true, true, true, true, true, true, true };
-		defaultSideConfig[type].allowExtractionSlot = new boolean[] { true, true, true, true, true, true, true, true, true };
-		defaultSideConfig[type].sideTex = new int[] { 0, 1, 4, 7 };
-		defaultSideConfig[type].defaultSides = new byte[] { 1, 1, 1, 1, 1, 1 };
+		DEFAULT_SIDE_CONFIG[type] = new SideConfig();
+		DEFAULT_SIDE_CONFIG[type].numConfig = 4;
+		DEFAULT_SIDE_CONFIG[type].slotGroups = new int[][] { {}, { 0, 1, 2, 3, 4, 5, 6, 7, 8 }, { 0, 1, 2, 3, 4, 5, 6, 7, 8 }, { 0, 1, 2, 3, 4, 5, 6, 7, 8 } };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSide = new boolean[] { false, true, false, true };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSide = new boolean[] { false, false, true, true };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSlot = new boolean[] { true, true, true, true, true, true, true, true, true };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSlot = new boolean[] { true, true, true, true, true, true, true, true, true };
+		DEFAULT_SIDE_CONFIG[type].sideTex = new int[] { 0, 1, 4, 7 };
+		DEFAULT_SIDE_CONFIG[type].defaultSides = new byte[] { 1, 1, 1, 1, 1, 1 };
 
-		GameRegistry.registerTileEntity(TileBuffer.class, "thermalexpansion.Buffer");
+		GameRegistry.registerTileEntity(TileBuffer.class, "thermalexpansion.deviceBuffer");
 	}
 
 	int inputTracker;
@@ -44,7 +45,7 @@ public class TileBuffer extends TileDeviceBase {
 
 	public TileBuffer() {
 
-		super(Types.BUFFER);
+		super(BlockDevice.Type.BUFFER);
 		inventory = new ItemStack[9];
 	}
 
@@ -54,18 +55,6 @@ public class TileBuffer extends TileDeviceBase {
 		sideCache = getDefaultSides();
 		sideCache[facing] = 0;
 		sideCache[facing ^ 1] = 2;
-	}
-
-	@Override
-	public void updateEntity() {
-
-		if (ServerHelper.isClientWorld(worldObj)) {
-			return;
-		}
-		if (worldObj.getTotalWorldTime() % CoFHProps.TIME_CONSTANT_HALF == 0 && redstoneControlOrDisable()) {
-			transferOutput();
-			transferInput();
-		}
 	}
 
 	protected void transferInput() {
@@ -78,7 +67,7 @@ public class TileBuffer extends TileDeviceBase {
 			side = i % 6;
 			if (sideCache[side] == 1) {
 				for (int j = 0; j < inventory.length; j++) {
-					if (extractItem(j, quantityInput, side)) {
+					if (extractItem(j, quantityInput, EnumFacing.VALUES[side])) {
 						inputTracker = side;
 						return;
 					}
@@ -97,12 +86,25 @@ public class TileBuffer extends TileDeviceBase {
 			side = i % 6;
 			if (sideCache[side] == 2) {
 				for (int j = inventory.length - 1; j >= 0; j--) {
-					if (transferItem(j, quantityOutput, side)) {
+					if (transferItem(j, quantityOutput, EnumFacing.VALUES[side])) {
 						outputTracker = side;
 						return;
 					}
 				}
 			}
+		}
+	}
+
+	/* ITickable */
+	@Override
+	public void update() {
+
+		if (ServerHelper.isClientWorld(worldObj)) {
+			return;
+		}
+		if (worldObj.getTotalWorldTime() % CoFHProps.TIME_CONSTANT_HALF == 0 && redstoneControlOrDisable()) {
+			transferOutput();
+			transferInput();
 		}
 	}
 
@@ -230,13 +232,16 @@ public class TileBuffer extends TileDeviceBase {
 
 	/* IReconfigurableFacing */
 	@Override
-	public boolean setFacing(int side) {
+	public boolean setFacing(EnumFacing side) {
 
-		if (side < 0 || side > 5) {
+		int sideInt = side.ordinal();
+
+		if (sideInt < 0 || sideInt > 5) {
 			return false;
 		}
-		facing = (byte) side;
+		facing = (byte) sideInt;
 		sideCache[facing] = 0;
+		sideCache[facing ^ 1] = 2;
 		markDirty();
 		sendUpdatePacket(Side.CLIENT);
 		return true;

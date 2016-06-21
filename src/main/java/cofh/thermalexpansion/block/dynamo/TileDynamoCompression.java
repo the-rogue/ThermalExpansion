@@ -4,28 +4,25 @@ import cofh.core.network.PacketCoFHBase;
 import cofh.core.util.fluid.FluidTankAdv;
 import cofh.thermalexpansion.gui.client.dynamo.GuiDynamoCompression;
 import cofh.thermalexpansion.gui.container.ContainerTEBase;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import gnu.trove.map.hash.TObjectIntHashMap;
 
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.util.EnumFacing;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidContainerRegistry;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.FluidTankInfo;
 import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 
 public class TileDynamoCompression extends TileDynamoBase implements IFluidHandler {
 
-	static final int TYPE = BlockDynamo.Types.COMPRESSION.ordinal();
-
 	public static void initialize() {
 
-		GameRegistry.registerTileEntity(TileDynamoCompression.class, "thermalexpansion.DynamoCompression");
+		GameRegistry.registerTileEntity(TileDynamoCompression.class, "thermalexpansion.dynamoCompression");
 	}
 
 	FluidTankAdv fuelTank = new FluidTankAdv(MAX_FLUID);
@@ -33,12 +30,6 @@ public class TileDynamoCompression extends TileDynamoBase implements IFluidHandl
 
 	FluidStack renderFluid = new FluidStack(FluidRegistry.LAVA, FluidContainerRegistry.BUCKET_VOLUME);
 	int coolantRF;
-
-	@Override
-	public int getType() {
-
-		return TYPE;
-	}
 
 	@Override
 	protected boolean canGenerate() {
@@ -67,12 +58,6 @@ public class TileDynamoCompression extends TileDynamoBase implements IFluidHandl
 		energyStorage.modifyEnergyStored(energy);
 		fuelRF -= energy;
 		coolantRF -= energy;
-	}
-
-	@Override
-	public IIcon getActiveIcon() {
-
-		return renderFluid.getFluid().getIcon(renderFluid);
 	}
 
 	/* GUI METHODS */
@@ -171,9 +156,9 @@ public class TileDynamoCompression extends TileDynamoBase implements IFluidHandl
 
 	/* IFluidHandler */
 	@Override
-	public int fill(ForgeDirection from, FluidStack resource, boolean doFill) {
+	public int fill(EnumFacing from, FluidStack resource, boolean doFill) {
 
-		if (resource == null || from.ordinal() == facing && !augmentCoilDuct) {
+		if (resource == null || from != null && from.ordinal() == facing && !augmentCoilDuct) {
 			return 0;
 		}
 		if (isValidFuel(resource)) {
@@ -186,9 +171,9 @@ public class TileDynamoCompression extends TileDynamoBase implements IFluidHandl
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, FluidStack resource, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, FluidStack resource, boolean doDrain) {
 
-		if (resource == null || !augmentCoilDuct && from.ordinal() == facing) {
+		if (resource == null || !augmentCoilDuct && from != null && from.ordinal() == facing) {
 			return null;
 		}
 		if (isValidFuel(resource)) {
@@ -201,9 +186,9 @@ public class TileDynamoCompression extends TileDynamoBase implements IFluidHandl
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, int maxDrain, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, int maxDrain, boolean doDrain) {
 
-		if (!augmentCoilDuct && from.ordinal() == facing) {
+		if (!augmentCoilDuct && from != null && from.ordinal() == facing) {
 			return null;
 		}
 		if (fuelTank.getFluidAmount() <= 0) {
@@ -213,7 +198,7 @@ public class TileDynamoCompression extends TileDynamoBase implements IFluidHandl
 	}
 
 	@Override
-	public FluidTankInfo[] getTankInfo(ForgeDirection from) {
+	public FluidTankInfo[] getTankInfo(EnumFacing from) {
 
 		return new FluidTankInfo[] { fuelTank.getInfo(), coolantTank.getInfo() };
 	}

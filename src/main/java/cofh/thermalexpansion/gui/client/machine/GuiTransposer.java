@@ -15,12 +15,12 @@ import cofh.thermalexpansion.gui.element.ElementSlotOverlay;
 
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.common.util.ForgeDirection;
 
 public class GuiTransposer extends GuiAugmentableBase {
 
-	static final String TEX_PATH = TEProps.PATH_GUI_MACHINE + "Transposer.png";
+	static final String TEX_PATH = TEProps.PATH_GUI_MACHINE + "transposer.png";
 	public static final ResourceLocation TEXTURE = new ResourceLocation(TEX_PATH);
 
 	TileTransposer myTile;
@@ -83,7 +83,7 @@ public class GuiTransposer extends GuiAugmentableBase {
 
 		progressBackgroundRev.setVisible(myTile.reverse);
 		progressFluid.setFluid(myTile.getTankFluid());
-		progressFluid.setSize(myTile.getEnergyStored(ForgeDirection.UNKNOWN) > 0 ? myTile.getScaledProgress(PROGRESS) : 0, 16);
+		progressFluid.setSize(myTile.getEnergyStored(EnumFacing.DOWN) > 0 ? myTile.getScaledProgress(PROGRESS) : 0, 16);
 
 		if (!myTile.hasSide(4)) {
 			slotOutput[1].slotRender = 2;
@@ -98,27 +98,27 @@ public class GuiTransposer extends GuiAugmentableBase {
 			progressFluid.setPosition(112 + PROGRESS - myTile.getScaledProgress(PROGRESS), 19);
 		}
 		progressOverlay.setVisible(!myTile.reverse);
-		progressOverlay.setQuantity(myTile.getEnergyStored(ForgeDirection.UNKNOWN) > 0 ? myTile.getScaledProgress(PROGRESS) : 0);
+		progressOverlay.setQuantity(myTile.getEnergyStored(EnumFacing.DOWN) > 0 ? myTile.getScaledProgress(PROGRESS) : 0);
 		progressOverlayRev.setVisible(myTile.reverse);
-		progressOverlayRev.setQuantity(myTile.getEnergyStored(ForgeDirection.UNKNOWN) > 0 ? myTile.getScaledProgress(PROGRESS) : 0);
-		speed.setQuantity(myTile.getEnergyStored(ForgeDirection.UNKNOWN) > 0 ? myTile.getScaledSpeed(SPEED) : 0);
+		progressOverlayRev.setQuantity(myTile.getEnergyStored(EnumFacing.DOWN) > 0 ? myTile.getScaledProgress(PROGRESS) : 0);
+		speed.setQuantity(myTile.getEnergyStored(EnumFacing.DOWN) > 0 ? myTile.getScaledSpeed(SPEED) : 0);
 
 		if (myTile.reverse) {
 			if (!myTile.reverseFlag) {
-				mode.setToolTip("info.thermalexpansion.transposer.toggleWait");
+				mode.setToolTip("gui.thermalexpansion.transposer.toggleWait");
 				mode.setDisabled();
 			} else {
-				mode.setToolTip("info.thermalexpansion.transposer.toggleFill");
+				mode.setToolTip("gui.thermalexpansion.transposer.toggleFill");
 				mode.setSheetX(192);
 				mode.setHoverX(192);
 				mode.setActive();
 			}
 		} else {
 			if (myTile.reverseFlag) {
-				mode.setToolTip("info.thermalexpansion.transposer.toggleWait");
+				mode.setToolTip("gui.thermalexpansion.transposer.toggleWait");
 				mode.setDisabled();
 			} else {
-				mode.setToolTip("info.thermalexpansion.transposer.toggleEmpty");
+				mode.setToolTip("gui.thermalexpansion.transposer.toggleEmpty");
 				mode.setSheetX(176);
 				mode.setHoverX(176);
 				mode.setActive();

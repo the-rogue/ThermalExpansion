@@ -17,7 +17,7 @@ import net.minecraft.util.ResourceLocation;
 
 public class GuiInsolator extends GuiAugmentableBase {
 
-	static final String TEX_PATH = TEProps.PATH_GUI_MACHINE + "Insolator.png";
+	static final String TEX_PATH = TEProps.PATH_GUI_MACHINE + "insolator.png";
 	public static final ResourceLocation TEXTURE = new ResourceLocation(TEX_PATH);
 
 	TileInsolator myTile;
@@ -99,12 +99,12 @@ public class GuiInsolator extends GuiAugmentableBase {
 		speed.setQuantity(myTile.getScaledSpeed(SPEED));
 
 		if (myTile.lockPrimary) {
-			mode.setToolTip("info.thermalexpansion.insolator.toggleUnlock");
+			mode.setToolTip("gui.thermalexpansion.insolator.toggleUnlock");
 			mode.setSheetX(176);
 			mode.setHoverX(176);
 			modeOverlay.setVisible(true);
 		} else {
-			mode.setToolTip("info.thermalexpansion.insolator.toggleLock");
+			mode.setToolTip("gui.thermalexpansion.insolator.toggleLock");
 			mode.setSheetX(192);
 			mode.setHoverX(192);
 			modeOverlay.setVisible(false);

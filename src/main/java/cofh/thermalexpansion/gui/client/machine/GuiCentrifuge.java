@@ -5,16 +5,16 @@ import cofh.lib.gui.element.ElementDualScaled;
 import cofh.lib.gui.element.ElementEnergyStored;
 import cofh.thermalexpansion.core.TEProps;
 import cofh.thermalexpansion.gui.client.GuiAugmentableBase;
-import cofh.thermalexpansion.gui.container.machine.ContainerSawmill;
+import cofh.thermalexpansion.gui.container.machine.ContainerCentrifuge;
 import cofh.thermalexpansion.gui.element.ElementSlotOverlay;
 
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 
-public class GuiSawmill extends GuiAugmentableBase {
+public class GuiCentrifuge extends GuiAugmentableBase {
 
-	public static final ResourceLocation TEXTURE = new ResourceLocation(TEProps.PATH_GUI_MACHINE + "sawmill.png");
+	public static final ResourceLocation TEXTURE = new ResourceLocation(TEProps.PATH_GUI_MACHINE + "centrifuge.png");
 
 	ElementBase slotInput;
 	ElementSlotOverlay[] slotPrimaryOutput = new ElementSlotOverlay[2];
@@ -22,11 +22,11 @@ public class GuiSawmill extends GuiAugmentableBase {
 	ElementDualScaled progress;
 	ElementDualScaled speed;
 
-	public GuiSawmill(InventoryPlayer inventory, TileEntity tile) {
+	public GuiCentrifuge(InventoryPlayer inventory, TileEntity tile) {
 
-		super(new ContainerSawmill(inventory, tile), tile, inventory.player, TEXTURE);
+		super(new ContainerCentrifuge(inventory, tile), tile, inventory.player, TEXTURE);
 
-		generateInfo("tab.thermalexpansion.machine.sawmill", 3);
+		generateInfo("tab.thermalexpansion.machine.Centrifuge", 3);
 	}
 
 	@Override
@@ -42,7 +42,7 @@ public class GuiSawmill extends GuiAugmentableBase {
 
 		addElement(new ElementEnergyStored(this, 8, 8, myTile.getEnergyStorage()));
 		progress = (ElementDualScaled) addElement(new ElementDualScaled(this, 79, 34).setMode(1).setSize(24, 16).setTexture(TEX_ARROW_RIGHT, 64, 16));
-		speed = (ElementDualScaled) addElement(new ElementDualScaled(this, 56, 44).setSize(16, 16).setTexture(TEX_SAW, 32, 16));
+		speed = (ElementDualScaled) addElement(new ElementDualScaled(this, 56, 44).setSize(16, 16).setTexture(TEX_CRUSH, 32, 16));
 	}
 
 	@Override

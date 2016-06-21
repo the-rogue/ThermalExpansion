@@ -3,16 +3,15 @@ package cofh.thermalexpansion.block.machine;
 import cofh.core.network.PacketCoFHBase;
 import cofh.core.util.CoreUtils;
 import cofh.core.util.fluid.FluidTankAdv;
+import cofh.lib.util.helpers.ItemHelper;
 import cofh.lib.util.helpers.MathHelper;
 import cofh.lib.util.helpers.ServerHelper;
 import cofh.thermalexpansion.ThermalExpansion;
-import cofh.thermalexpansion.block.machine.BlockMachine.Types;
 import cofh.thermalexpansion.core.TEProps;
 import cofh.thermalexpansion.gui.client.machine.GuiInsolator;
 import cofh.thermalexpansion.gui.container.machine.ContainerInsolator;
 import cofh.thermalexpansion.util.crafting.InsolatorManager;
 import cofh.thermalexpansion.util.crafting.InsolatorManager.RecipeInsolator;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
@@ -20,38 +19,39 @@ import net.minecraft.inventory.Container;
 import net.minecraft.inventory.ICrafting;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.util.EnumFacing;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.FluidTankInfo;
 import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 
 public class TileInsolator extends TileMachineBase implements IFluidHandler {
 
 	public static void initialize() {
 
-		int type = BlockMachine.Types.INSOLATOR.ordinal();
+		int type = BlockMachine.Type.INSOLATOR.ordinal();
 
-		defaultSideConfig[type] = new SideConfig();
-		defaultSideConfig[type].numConfig = 8;
-		defaultSideConfig[type].slotGroups = new int[][] { {}, { 0, 1 }, { 2 }, { 3 }, { 2, 3 }, { 0 }, { 1 }, { 0, 1, 2, 3 } };
-		defaultSideConfig[type].allowInsertionSide = new boolean[] { false, true, false, false, false, true, true, true };
-		defaultSideConfig[type].allowExtractionSide = new boolean[] { false, true, true, true, true, false, false, true };
-		defaultSideConfig[type].allowInsertionSlot = new boolean[] { true, true, false, false, false };
-		defaultSideConfig[type].allowExtractionSlot = new boolean[] { true, true, true, true, false };
-		defaultSideConfig[type].sideTex = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
-		defaultSideConfig[type].defaultSides = new byte[] { 3, 1, 2, 2, 2, 2 };
+		DEFAULT_SIDE_CONFIG[type] = new SideConfig();
+		DEFAULT_SIDE_CONFIG[type].numConfig = 8;
+		DEFAULT_SIDE_CONFIG[type].slotGroups = new int[][] { {}, { 0, 1 }, { 2 }, { 3 }, { 2, 3 }, { 0 }, { 1 }, { 0, 1, 2, 3 } };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSide = new boolean[] { false, true, false, false, false, true, true, true };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSide = new boolean[] { false, true, true, true, true, false, false, true };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSlot = new boolean[] { true, true, false, false, false };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSlot = new boolean[] { true, true, true, true, false };
+		DEFAULT_SIDE_CONFIG[type].sideTex = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
+		DEFAULT_SIDE_CONFIG[type].defaultSides = new byte[] { 3, 1, 2, 2, 2, 2 };
 
 		String category = "Machine.Insolator";
-		int basePower = MathHelper.clamp(ThermalExpansion.config.get(category, "BasePower", 20), 10, 500);
-		ThermalExpansion.config.set(category, "BasePower", basePower);
-		defaultEnergyConfig[type] = new EnergyConfig();
-		defaultEnergyConfig[type].setParamsPower(basePower);
+		int basePower = MathHelper.clamp(ThermalExpansion.CONFIG.get(category, "BasePower", 20), 10, 500);
+		ThermalExpansion.CONFIG.set(category, "BasePower", basePower);
+		DEFAULT_ENERGY_CONFIG[type] = new EnergyConfig();
+		DEFAULT_ENERGY_CONFIG[type].setParamsPower(basePower);
 
-		sounds[type] = CoreUtils.getSoundName(ThermalExpansion.modId, "blockMachineInsolator");
+		SOUNDS[type] = CoreUtils.getSoundName(ThermalExpansion.modId, "blockMachineInsolator");
 
-		GameRegistry.registerTileEntity(TileInsolator.class, "thermalexpansion.Insolator");
+		GameRegistry.registerTileEntity(TileInsolator.class, "thermalexpansion.machineInsolator");
 	}
 
 	int inputTrackerPrimary;
@@ -65,13 +65,13 @@ public class TileInsolator extends TileMachineBase implements IFluidHandler {
 
 	public TileInsolator() {
 
-		super(Types.INSOLATOR);
+		super(BlockMachine.Type.INSOLATOR);
 		inventory = new ItemStack[2 + 1 + 1 + 1];
 		tank.setLock(FluidRegistry.WATER);
 	}
 
 	@Override
-	public void updateEntity() {
+	public void update() {
 
 		if (ServerHelper.isClientWorld(worldObj)) {
 			return;
@@ -202,8 +202,8 @@ public class TileInsolator extends TileMachineBase implements IFluidHandler {
 			processRem = 0;
 			return;
 		}
-		ItemStack primaryItem = recipe.getPrimaryOutput();
-		ItemStack secondaryItem = recipe.getSecondaryOutput();
+		ItemStack primaryItem = ItemHelper.cloneStack(recipe.getPrimaryOutput());
+		ItemStack secondaryItem = ItemHelper.cloneStack(recipe.getSecondaryOutput());
 		if (inventory[2] == null) {
 			inventory[2] = primaryItem;
 		} else {
@@ -255,7 +255,7 @@ public class TileInsolator extends TileMachineBase implements IFluidHandler {
 		for (int i = inputTrackerPrimary + 1; i <= inputTrackerPrimary + 6; i++) {
 			side = i % 6;
 			if (sideCache[side] == 1 || sideCache[side] == 5) {
-				if (extractItem(0, AUTO_TRANSFER[level], side)) {
+				if (extractItem(0, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					inputTrackerPrimary = side;
 					break;
 				}
@@ -264,7 +264,7 @@ public class TileInsolator extends TileMachineBase implements IFluidHandler {
 		for (int i = inputTrackerPrimary + 1; i <= inputTrackerPrimary + 6; i++) {
 			side = i % 6;
 			if (sideCache[side] == 1 || sideCache[side] == 6) {
-				if (extractItem(1, AUTO_TRANSFER[level], side)) {
+				if (extractItem(1, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					inputTrackerSecondary = side;
 					break;
 				}
@@ -284,7 +284,7 @@ public class TileInsolator extends TileMachineBase implements IFluidHandler {
 				side = i % 6;
 
 				if (sideCache[side] == 2 || sideCache[side] == 4) {
-					if (transferItem(2, AUTO_TRANSFER[level], side)) {
+					if (transferItem(2, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 						outputTrackerPrimary = side;
 						break;
 					}
@@ -298,7 +298,7 @@ public class TileInsolator extends TileMachineBase implements IFluidHandler {
 			side = i % 6;
 
 			if (sideCache[side] == 3 || sideCache[side] == 4) {
-				if (transferItem(3, AUTO_TRANSFER[level], side)) {
+				if (transferItem(3, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					outputTrackerSecondary = side;
 					break;
 				}
@@ -465,37 +465,37 @@ public class TileInsolator extends TileMachineBase implements IFluidHandler {
 
 	/* IFluidHandler */
 	@Override
-	public int fill(ForgeDirection from, FluidStack resource, boolean doFill) {
+	public int fill(EnumFacing from, FluidStack resource, boolean doFill) {
 
 		return tank.fill(resource, doFill);
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, FluidStack resource, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, FluidStack resource, boolean doDrain) {
 
 		return null;
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, int maxDrain, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, int maxDrain, boolean doDrain) {
 
 		return null;
 	}
 
 	@Override
-	public boolean canFill(ForgeDirection from, Fluid fluid) {
+	public boolean canFill(EnumFacing from, Fluid fluid) {
 
 		return true;
 	}
 
 	@Override
-	public boolean canDrain(ForgeDirection from, Fluid fluid) {
+	public boolean canDrain(EnumFacing from, Fluid fluid) {
 
 		return false;
 	}
 
 	@Override
-	public FluidTankInfo[] getTankInfo(ForgeDirection from) {
+	public FluidTankInfo[] getTankInfo(EnumFacing from) {
 
 		return new FluidTankInfo[] { tank.getInfo() };
 	}

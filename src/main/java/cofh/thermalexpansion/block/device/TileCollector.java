@@ -1,16 +1,13 @@
 package cofh.thermalexpansion.block.device;
 
-import cofh.api.inventory.IInventoryConnection;
+import cofh.api.tileentity.IInventoryConnection;
 import cofh.core.CoFHProps;
-import cofh.core.RegistrySocial;
-import cofh.lib.util.helpers.BlockHelper;
+import cofh.core.util.RegistrySocial;
 import cofh.lib.util.helpers.InventoryHelper;
 import cofh.lib.util.helpers.SecurityHelper;
 import cofh.lib.util.helpers.ServerHelper;
-import cofh.thermalexpansion.block.device.BlockDevice.Types;
 import cofh.thermalexpansion.gui.client.device.GuiCollector;
 import cofh.thermalexpansion.gui.container.ContainerTEBase;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -27,34 +24,38 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.ITickable;
 import net.minecraft.world.World;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 
-public class TileCollector extends TileDeviceBase implements IInventoryConnection {
+public class TileCollector extends TileDeviceBase implements IInventoryConnection, ITickable {
+
+	static final float[] DEFAULT_DROP_CHANCES = new float[] { 1.0F, 1.0F, 1.0F, 1.0F, 1.0F };
 
 	public static void initialize() {
 
-		int type = BlockDevice.Types.COLLECTOR.ordinal();
+		int type = BlockDevice.Type.COLLECTOR.ordinal();
 
-		defaultSideConfig[type] = new SideConfig();
-		defaultSideConfig[type].numConfig = 2;
-		defaultSideConfig[type].slotGroups = new int[][] { {}, {} };
-		defaultSideConfig[type].allowInsertionSide = new boolean[] { false, false };
-		defaultSideConfig[type].allowExtractionSide = new boolean[] { false, false };
-		defaultSideConfig[type].allowInsertionSlot = new boolean[] {};
-		defaultSideConfig[type].allowExtractionSlot = new boolean[] {};
-		defaultSideConfig[type].sideTex = new int[] { 0, 4 };
-		defaultSideConfig[type].defaultSides = new byte[] { 0, 0, 0, 0, 0, 0 };
+		DEFAULT_SIDE_CONFIG[type] = new SideConfig();
+		DEFAULT_SIDE_CONFIG[type].numConfig = 2;
+		DEFAULT_SIDE_CONFIG[type].slotGroups = new int[][] { {}, {} };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSide = new boolean[] { false, false };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSide = new boolean[] { false, false };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSlot = new boolean[] {};
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSlot = new boolean[] {};
+		DEFAULT_SIDE_CONFIG[type].sideTex = new int[] { 0, 4 };
+		DEFAULT_SIDE_CONFIG[type].defaultSides = new byte[] { 0, 0, 0, 0, 0, 0 };
 
-		GameRegistry.registerTileEntity(TileCollector.class, "thermalexpansion.Collector");
+		GameRegistry.registerTileEntity(TileCollector.class, "thermalexpansion.deviceCollector");
 	}
 
 	int areaMajor = 2;
 	int areaMinor = 1;
 	LinkedList<ItemStack> stuffedItems = new LinkedList<ItemStack>();
 
-	static float[] defaultDropChances = new float[] { 1.0F, 1.0F, 1.0F, 1.0F, 1.0F };
-
+	boolean ignoreGuild = true;
 	boolean ignoreFriends = true;
 	boolean ignoreOwner = true;
 
@@ -62,7 +63,7 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 
 	public TileCollector() {
 
-		super(Types.COLLECTOR);
+		super(BlockDevice.Type.COLLECTOR);
 	}
 
 	@Override
@@ -72,22 +73,6 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 		sideCache[facing ^ 1] = 1;
 	}
 
-	@Override
-	public void updateEntity() {
-
-		if (ServerHelper.isClientWorld(worldObj)) {
-			return;
-		}
-		if (worldObj.getTotalWorldTime() % CoFHProps.TIME_CONSTANT_HALF == 0 && redstoneControlOrDisable()) {
-			if (!isEmpty()) {
-				outputBuffer();
-			}
-			if (isEmpty()) {
-				collectItems();
-			}
-		}
-	}
-
 	public boolean isEmpty() {
 
 		return stuffedItems.size() == 0;
@@ -95,7 +80,7 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 
 	public boolean doNotCollectItemsFrom(EntityPlayer player) {
 
-		String name = player.getCommandSenderName();
+		String name = player.getName();
 
 		UUID ownerID = owner.getId();
 		UUID otherID = SecurityHelper.getID(player);
@@ -107,11 +92,11 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 
 	public void collectItems() {
 
-		int coords[] = BlockHelper.getAdjacentCoordinatesForSide(xCoord, yCoord, zCoord, facing);
-		stuffedItems.addAll(collectItemsInArea(worldObj, coords[0], coords[1], coords[2], facing, areaMajor, areaMinor));
+		BlockPos adj = new BlockPos(pos).offset(EnumFacing.VALUES[facing]);
+		stuffedItems.addAll(collectItemsInArea(worldObj, adj, facing, areaMajor, areaMinor));
 
 		if (augmentEntityCollection) {
-			stuffedItems.addAll(collectItemsFromEntities(worldObj, coords[0], coords[1], coords[2], facing, areaMajor, areaMinor));
+			stuffedItems.addAll(collectItemsFromEntities(worldObj, adj, facing, areaMajor, areaMinor));
 		}
 	}
 
@@ -119,8 +104,8 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 
 		for (int i = 0; i < 6; i++) {
 			if (i != facing && sideCache[i] == 1) {
-				int coords[] = BlockHelper.getAdjacentCoordinatesForSide(xCoord, yCoord, zCoord, i);
-				TileEntity theTile = worldObj.getTileEntity(coords[0], coords[1], coords[2]);
+				BlockPos adj = new BlockPos(pos).offset(EnumFacing.VALUES[i]);
+				TileEntity theTile = worldObj.getTileEntity(adj);
 
 				if (InventoryHelper.isInsertion(theTile)) {
 					LinkedList<ItemStack> newStuffed = new LinkedList<ItemStack>();
@@ -128,7 +113,7 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 						if (curItem == null || curItem.getItem() == null) {
 							curItem = null;
 						} else {
-							curItem = InventoryHelper.addToInsertion(theTile, i, curItem);
+							curItem = InventoryHelper.addToInsertion(theTile, curItem, EnumFacing.VALUES[i]);
 						}
 						if (curItem != null) {
 							newStuffed.add(curItem);
@@ -140,7 +125,11 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 		}
 	}
 
-	public List<ItemStack> collectItemsInArea(World worldObj, int x, int y, int z, int side, int areaMajor, int areaMinor) {
+	public List<ItemStack> collectItemsInArea(World worldObj, BlockPos adj, int side, int areaMajor, int areaMinor) {
+
+		int x = adj.getX();
+		int y = adj.getY();
+		int z = adj.getZ();
 
 		int areaMajor2 = 1 + areaMajor;
 		List<ItemStack> stacks = new ArrayList<ItemStack>();
@@ -150,16 +139,16 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 		case 0:
 		case 1:
 			result = worldObj.getEntitiesWithinAABB(EntityItem.class,
-					AxisAlignedBB.getBoundingBox(x - areaMajor, y, z - areaMajor, x + areaMajor2, y + areaMinor, z + areaMajor2));
+					AxisAlignedBB.fromBounds(x - areaMajor, y, z - areaMajor, x + areaMajor2, y + areaMinor, z + areaMajor2));
 			break;
 		case 2:
 		case 3:
 			result = worldObj.getEntitiesWithinAABB(EntityItem.class,
-					AxisAlignedBB.getBoundingBox(x - areaMajor, y - areaMajor, z, x + areaMajor2, y + areaMajor2, z + areaMinor));
+					AxisAlignedBB.fromBounds(x - areaMajor, y - areaMajor, z, x + areaMajor2, y + areaMajor2, z + areaMinor));
 			break;
 		default:
 			result = worldObj.getEntitiesWithinAABB(EntityItem.class,
-					AxisAlignedBB.getBoundingBox(x, y - areaMajor, z - areaMajor, x + areaMinor, y + areaMajor2, z + areaMajor2));
+					AxisAlignedBB.fromBounds(x, y - areaMajor, z - areaMajor, x + areaMinor, y + areaMajor2, z + areaMajor2));
 			break;
 		}
 		for (int i = 0; i < result.size(); i++) {
@@ -173,7 +162,11 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 		return stacks;
 	}
 
-	public List<ItemStack> collectItemsFromEntities(World worldObj, int x, int y, int z, int side, int areaMajor, int areaMinor) {
+	public List<ItemStack> collectItemsFromEntities(World worldObj, BlockPos adj, int side, int areaMajor, int areaMinor) {
+
+		int x = adj.getX();
+		int y = adj.getY();
+		int z = adj.getZ();
 
 		int areaMajor2 = 1 + areaMajor;
 		List<ItemStack> stacks = new ArrayList<ItemStack>();
@@ -183,21 +176,21 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 		case 0:
 		case 1:
 			result = worldObj.getEntitiesWithinAABB(EntityLivingBase.class,
-					AxisAlignedBB.getBoundingBox(x - areaMajor, y, z - areaMajor, x + areaMajor2, y + areaMinor, z + areaMajor2));
+					AxisAlignedBB.fromBounds(x - areaMajor, y, z - areaMajor, x + areaMajor2, y + areaMinor, z + areaMajor2));
 			break;
 		case 2:
 		case 3:
 			result = worldObj.getEntitiesWithinAABB(EntityLivingBase.class,
-					AxisAlignedBB.getBoundingBox(x - areaMajor, y - areaMajor, z, x + areaMajor2, y + areaMajor2, z + areaMinor));
+					AxisAlignedBB.fromBounds(x - areaMajor, y - areaMajor, z, x + areaMajor2, y + areaMajor2, z + areaMinor));
 			break;
 		default:
 			result = worldObj.getEntitiesWithinAABB(EntityLivingBase.class,
-					AxisAlignedBB.getBoundingBox(x, y - areaMajor, z - areaMajor, x + areaMinor, y + areaMajor2, z + areaMajor2));
+					AxisAlignedBB.fromBounds(x, y - areaMajor, z - areaMajor, x + areaMinor, y + areaMajor2, z + areaMajor2));
 			break;
 		}
 		for (int i = 0; i < result.size(); i++) {
 			EntityLivingBase entity = result.get(i);
-			float[] dropChances = defaultDropChances;
+			float[] dropChances = DEFAULT_DROP_CHANCES;
 
 			if (entity instanceof EntityLiving) {
 				dropChances = ((EntityLiving) entity).equipmentDropChances;
@@ -215,6 +208,23 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 			}
 		}
 		return stacks;
+	}
+
+	/* ITickable */
+	@Override
+	public void update() {
+
+		if (ServerHelper.isClientWorld(worldObj)) {
+			return;
+		}
+		if (worldObj.getTotalWorldTime() % CoFHProps.TIME_CONSTANT_HALF == 0 && redstoneControlOrDisable()) {
+			if (!isEmpty()) {
+				outputBuffer();
+			}
+			if (isEmpty()) {
+				collectItems();
+			}
+		}
 	}
 
 	/* GUI METHODS */
@@ -263,9 +273,9 @@ public class TileCollector extends TileDeviceBase implements IInventoryConnectio
 
 	/* IInventoryConnection */
 	@Override
-	public ConnectionType canConnectInventory(ForgeDirection from) {
+	public ConnectionType canConnectInventory(EnumFacing from) {
 
-		if (from != ForgeDirection.UNKNOWN && from.ordinal() != facing && sideCache[from.ordinal()] == 1) {
+		if (from != null && from.ordinal() != facing && sideCache[from.ordinal()] == 1) {
 			return ConnectionType.FORCE;
 		} else {
 			return ConnectionType.DEFAULT;

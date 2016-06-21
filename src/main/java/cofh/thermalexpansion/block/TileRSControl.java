@@ -6,21 +6,23 @@ import cofh.asm.relauncher.Implementable;
 import cofh.asm.relauncher.Strippable;
 import cofh.core.network.PacketCoFHBase;
 import cofh.lib.audio.ISoundSource;
-import cofh.lib.audio.SoundTile;
+import cofh.lib.audio.SoundLocation;
 import cofh.lib.util.helpers.ServerHelper;
 import cofh.lib.util.helpers.SoundHelper;
 import cofh.thermalexpansion.network.PacketTEBase;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 
 import net.minecraft.client.audio.ISound;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 @Implementable("buildcraft.api.tiles.IHasWork")
-@Strippable(value = "cofh.lib.audio.ISoundSource", side = CoFHSide.SERVER)
-public abstract class TileRSControl extends TileInventory implements IRedstoneControl, ISoundSource {
+@Strippable(value = "cofh.core.audio.ISoundSource", side = CoFHSide.SERVER)
+public abstract class TileRSControl extends TileInventorySecure implements IRedstoneControl, ISoundSource {
 
 	public boolean isActive;
+
+	protected int powerLevel;
 	protected boolean isPowered;
 	protected boolean wasPowered;
 
@@ -30,12 +32,17 @@ public abstract class TileRSControl extends TileInventory implements IRedstoneCo
 	public void onNeighborBlockChange() {
 
 		wasPowered = isPowered;
-		isPowered = worldObj.isBlockIndirectlyGettingPowered(xCoord, yCoord, zCoord);
+		powerLevel = worldObj.isBlockIndirectlyGettingPowered(pos);
+		isPowered = powerLevel > 0;
 
 		if (wasPowered != isPowered && sendRedstoneUpdates()) {
-			PacketTEBase.sendRSPowerUpdatePacketToClients(this, worldObj, xCoord, yCoord, zCoord);
+			PacketTEBase.sendRSPowerUpdatePacketToClients(this, worldObj, pos);
 			onRedstoneUpdate();
 		}
+	}
+
+	public void onRedstoneUpdate() {
+
 	}
 
 	protected boolean sendRedstoneUpdates() {
@@ -48,10 +55,6 @@ public abstract class TileRSControl extends TileInventory implements IRedstoneCo
 		return rsMode.isDisabled() || isPowered == rsMode.getState();
 	}
 
-	public void onRedstoneUpdate() {
-
-	}
-
 	/* NBT METHODS */
 	@Override
 	public void readFromNBT(NBTTagCompound nbt) {
@@ -62,6 +65,7 @@ public abstract class TileRSControl extends TileInventory implements IRedstoneCo
 		NBTTagCompound rsTag = nbt.getCompoundTag("RS");
 
 		isPowered = rsTag.getBoolean("Power");
+		powerLevel = rsTag.getByte("Level");
 		rsMode = ControlMode.values()[rsTag.getByte("Mode")];
 	}
 
@@ -74,6 +78,7 @@ public abstract class TileRSControl extends TileInventory implements IRedstoneCo
 		NBTTagCompound rsTag = new NBTTagCompound();
 
 		rsTag.setBoolean("Power", isPowered);
+		rsTag.setByte("Level", (byte) powerLevel);
 		rsTag.setByte("Mode", (byte) rsMode.ordinal());
 		nbt.setTag("RS", rsTag);
 	}
@@ -102,7 +107,6 @@ public abstract class TileRSControl extends TileInventory implements IRedstoneCo
 
 		if (!isServer) {
 			boolean prevActive = isActive;
-
 			isActive = payload.getBool();
 
 			if (isActive && !prevActive) {
@@ -122,7 +126,7 @@ public abstract class TileRSControl extends TileInventory implements IRedstoneCo
 		wasPowered = this.isPowered;
 		this.isPowered = isPowered;
 		if (ServerHelper.isClientWorld(worldObj)) {
-			worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+			worldObj.markBlockForUpdate(pos);
 		}
 	}
 
@@ -137,7 +141,7 @@ public abstract class TileRSControl extends TileInventory implements IRedstoneCo
 
 		rsMode = control;
 		if (ServerHelper.isClientWorld(worldObj)) {
-			PacketTEBase.sendRSConfigUpdatePacketToServer(this, this.xCoord, this.yCoord, this.zCoord);
+			PacketTEBase.sendRSConfigUpdatePacketToServer(this, pos);
 		} else {
 			sendUpdatePacket(Side.CLIENT);
 		}
@@ -154,7 +158,7 @@ public abstract class TileRSControl extends TileInventory implements IRedstoneCo
 	@SideOnly(Side.CLIENT)
 	public ISound getSound() {
 
-		return new SoundTile(this, getSoundName(), 1.0F, 1.0F, true, 0, xCoord, yCoord, zCoord);
+		return new SoundLocation(this, getSoundName(), 1.0F, 1.0F, true, 0, pos.getX(), pos.getY(), pos.getZ());
 	}
 
 	public String getSoundName() {

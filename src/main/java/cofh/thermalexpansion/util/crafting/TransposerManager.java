@@ -5,7 +5,7 @@ import cofh.lib.util.helpers.ItemHelper;
 import cofh.thermalexpansion.ThermalExpansion;
 import cofh.thermalexpansion.api.crafting.recipes.ITransposerRecipe;
 import cofh.thermalfoundation.fluid.TFFluids;
-import cofh.thermalfoundation.item.TFItems;
+import cofh.thermalfoundation.item.ItemMaterial;
 
 import gnu.trove.map.hash.THashMap;
 import gnu.trove.set.hash.THashSet;
@@ -34,7 +34,11 @@ public class TransposerManager {
 	public static final int DEFAULT_ENERGY = 1600;
 
 	static {
-		allowOverwrite = ThermalExpansion.config.get("RecipeManagers.Transposer", "AllowRecipeOverwrite", false);
+		allowOverwrite = ThermalExpansion.CONFIG.get("RecipeManagers.Transposer", "AllowRecipeOverwrite", false);
+	}
+
+	private TransposerManager() {
+
 	}
 
 	public static RecipeTransposer getFillRecipe(ItemStack input, FluidStack fluid) {
@@ -77,11 +81,11 @@ public class TransposerManager {
 
 		String category = "RecipeManagers.Transposer.Recipes";
 
-		boolean recipeMossyCobble = ThermalExpansion.config.get(category, "MossyCobblestone", true);
-		boolean recipeMossyStoneBrick = ThermalExpansion.config.get(category, "MossyStoneBrick", true);
-		boolean recipeEndStone = ThermalExpansion.config.get(category, "EndStone", true);
-		boolean recipePackedIce = ThermalExpansion.config.get(category, "PackedIce", true);
-		boolean recipeNetherBrick = ThermalExpansion.config.get(category, "NetherBrick", false);
+		boolean recipeMossyCobble = ThermalExpansion.CONFIG.get(category, "MossyCobblestone", true);
+		boolean recipeMossyStoneBrick = ThermalExpansion.CONFIG.get(category, "MossyStoneBrick", true);
+		boolean recipeEndStone = ThermalExpansion.CONFIG.get(category, "EndStone", true);
+		boolean recipePackedIce = ThermalExpansion.CONFIG.get(category, "PackedIce", true);
+		boolean recipeNetherBrick = ThermalExpansion.CONFIG.get(category, "NetherBrick", false);
 
 		if (recipeMossyCobble) {
 			addFillRecipe(8000, new ItemStack(Blocks.cobblestone), new ItemStack(Blocks.mossy_cobblestone), new FluidStack(FluidRegistry.WATER, 250), false);
@@ -99,30 +103,33 @@ public class TransposerManager {
 			addFillRecipe(4000, new ItemStack(Items.brick), new ItemStack(Items.netherbrick), new FluidStack(FluidRegistry.LAVA, 250), false);
 		}
 		addTEFillRecipe(4000, new ItemStack(Items.glowstone_dust), new ItemStack(Items.blaze_powder), new FluidStack(TFFluids.fluidRedstone, 200), false);
-		addTEFillRecipe(4000, new ItemStack(Items.snowball), ItemHelper.cloneStack(TFItems.dustBlizz, 1), new FluidStack(TFFluids.fluidRedstone, 200), false);
-		addTEFillRecipe(4000, new ItemStack(Blocks.sand), ItemHelper.cloneStack(TFItems.dustBlitz), new FluidStack(TFFluids.fluidRedstone, 200), false);
-		addTEFillRecipe(4000, ItemHelper.cloneStack(TFItems.dustObsidian, 1), ItemHelper.cloneStack(TFItems.dustBasalz, 1), new FluidStack(
+		addTEFillRecipe(4000, new ItemStack(Items.snowball), ItemHelper.cloneStack(ItemMaterial.dustBlizz, 1), new FluidStack(TFFluids.fluidRedstone, 200),
+				false);
+		addTEFillRecipe(4000, new ItemStack(Blocks.sand), ItemHelper.cloneStack(ItemMaterial.dustBlitz), new FluidStack(TFFluids.fluidRedstone, 200), false);
+		addTEFillRecipe(4000, ItemHelper.cloneStack(ItemMaterial.dustObsidian, 1), ItemHelper.cloneStack(ItemMaterial.dustBasalz, 1), new FluidStack(
 				TFFluids.fluidRedstone, 200), false);
 
-		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(TFItems.bucketRedstone, 1), new FluidStack(TFFluids.fluidRedstone, 1000), true);
-		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(TFItems.bucketGlowstone, 1), new FluidStack(TFFluids.fluidGlowstone, 1000),
-				true);
-		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(TFItems.bucketEnder, 1), new FluidStack(TFFluids.fluidEnder, 1000), true);
-		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(TFItems.bucketPyrotheum, 1), new FluidStack(TFFluids.fluidPyrotheum, 1000),
-				true);
-		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(TFItems.bucketCryotheum, 1), new FluidStack(TFFluids.fluidCryotheum, 1000),
-				true);
-		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(TFItems.bucketAerotheum, 1), new FluidStack(TFFluids.fluidAerotheum, 1000),
-				true);
-		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(TFItems.bucketPetrotheum, 1), new FluidStack(TFFluids.fluidPetrotheum, 1000),
-				true);
-		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(TFItems.bucketCoal, 1), new FluidStack(TFFluids.fluidCoal, 1000), true);
+		// TODO: FIX
+		//		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(ItemMaterial.bucketRedstone, 1), new FluidStack(TFFluids.fluidRedstone, 1000),
+		//				true);
+		//		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(ItemMaterial.bucketGlowstone, 1),
+		//				new FluidStack(TFFluids.fluidGlowstone, 1000), true);
+		//		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(ItemMaterial.bucketEnder, 1), new FluidStack(TFFluids.fluidEnder, 1000), true);
+		//		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(ItemMaterial.bucketPyrotheum, 1),
+		//				new FluidStack(TFFluids.fluidPyrotheum, 1000), true);
+		//		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(ItemMaterial.bucketCryotheum, 1),
+		//				new FluidStack(TFFluids.fluidCryotheum, 1000), true);
+		//		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(ItemMaterial.bucketAerotheum, 1),
+		//				new FluidStack(TFFluids.fluidAerotheum, 1000), true);
+		//		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(ItemMaterial.bucketPetrotheum, 1), new FluidStack(TFFluids.fluidPetrotheum,
+		//				1000), true);
+		//		addTEFillRecipe(800, new ItemStack(Items.bucket), ItemHelper.cloneStack(ItemMaterial.bucketCoal, 1), new FluidStack(TFFluids.fluidCoal, 1000), true);
 	}
 
 	public static void loadRecipes() {
 
-		addFillRecipe(1600, ItemHelper.getOre("oreCinnabar"), ItemHelper.cloneStack(TFItems.crystalCinnabar, 1), new FluidStack(TFFluids.fluidCryotheum, 200),
-				false);
+		addFillRecipe(1600, ItemHelper.getOre("oreCinnabar"), ItemHelper.cloneStack(ItemMaterial.crystalCinnabar, 1), new FluidStack(TFFluids.fluidCryotheum,
+				200), false);
 
 		for (FluidContainerData data : FluidContainerRegistry.getRegisteredFluidContainerData()) {
 			if (FluidContainerRegistry.isBucket(data.emptyContainer)) {
@@ -287,14 +294,14 @@ public class TransposerManager {
 		@Override
 		public ItemStack getInput() {
 
-			return input.copy();
+			return input;
 		}
 
 		@Override
 		public ItemStack getOutput() {
 
 			if (output != null) {
-				return output.copy();
+				return output;
 			}
 			return null;
 		}
@@ -302,7 +309,7 @@ public class TransposerManager {
 		@Override
 		public FluidStack getFluid() {
 
-			return fluid.copy();
+			return fluid;
 		}
 
 		@Override
@@ -337,7 +344,7 @@ public class TransposerManager {
 
 		public static int getOreID(ItemStack stack) {
 
-			int id = ItemHelper.oreProxy.getOreID(stack);
+			int id = ItemHelper.oreProxy.getPrimaryOreID(stack);
 
 			if (id == -1 || !safeOreType(ItemHelper.oreProxy.getOreName(id))) {
 				return -1;

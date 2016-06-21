@@ -1,6 +1,14 @@
 package cofh.thermalexpansion.core;
 
+import cofh.thermalexpansion.block.BlockTEBase;
+import cofh.thermalexpansion.block.BlockTEBase.EnumSideConfig;
+
+import net.minecraft.block.properties.PropertyBool;
+import net.minecraft.block.properties.PropertyEnum;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.common.property.IUnlistedProperty;
+import net.minecraftforge.common.property.Properties;
 import net.minecraftforge.fluids.FluidContainerRegistry;
 
 public class TEProps {
@@ -14,10 +22,6 @@ public class TEProps {
 	public static final int MAX_FLUID_LARGE = FluidContainerRegistry.BUCKET_VOLUME * 10;
 	public static final int MAGMATIC_TEMPERATURE = 1000;
 
-	public static enum PacketID {
-		GUI, FLUID, MODE
-	}
-
 	public static boolean enableAchievements = false;
 
 	/* Graphics */
@@ -30,14 +34,13 @@ public class TEProps {
 
 	public static final String PATH_GUI_DEVICE = PATH_GUI + "device/";
 	public static final String PATH_GUI_DYNAMO = PATH_GUI + "dynamo/";
-	public static final String PATH_GUI_ENDER = PATH_GUI + "ender/";
 	public static final String PATH_GUI_MACHINE = PATH_GUI + "machine/";
 	public static final String PATH_GUI_WORKBENCH = PATH_GUI + "workbench/";
 
-	public static final ResourceLocation PATH_COMMON = new ResourceLocation(PATH_ELEMENTS + "Slots.png");
-	public static final ResourceLocation PATH_COMMON_CB = new ResourceLocation(PATH_ELEMENTS + "SlotsCB.png");
-	public static final ResourceLocation PATH_ASSEMBLER = new ResourceLocation(PATH_ELEMENTS + "SlotsAssembler.png");
-	public static final ResourceLocation PATH_ASSEMBLER_CB = new ResourceLocation(PATH_ELEMENTS + "SlotsAssemblerCB.png");
+	public static final ResourceLocation PATH_COMMON = new ResourceLocation(PATH_ELEMENTS + "slots.png");
+	public static final ResourceLocation PATH_COMMON_CB = new ResourceLocation(PATH_ELEMENTS + "slots_cb.png");
+	public static final ResourceLocation PATH_ASSEMBLER = new ResourceLocation(PATH_ELEMENTS + "slots_assembler.png");
+	public static final ResourceLocation PATH_ASSEMBLER_CB = new ResourceLocation(PATH_ELEMENTS + "slots_assembler_cb.png");
 	public static final String PATH_ICON = PATH_GUI + "icons/";
 
 	public static final String TEXTURE_DEFAULT = "Config_";
@@ -57,5 +60,16 @@ public class TEProps {
 	public static int renderIdPlate = -1;
 	public static int renderIdTank = -1;
 	public static int renderIdEnder = -1;
+
+	/* Common Unlisted Block Properties */
+	public static final IUnlistedProperty<Boolean> ACTIVE = Properties.toUnlisted(PropertyBool.create("active"));
+	public static final IUnlistedProperty<EnumFacing> FACING = Properties.toUnlisted(PropertyEnum.<EnumFacing> create("facing", EnumFacing.class));
+	public static final IUnlistedProperty<BlockTEBase.EnumSideConfig>[] SIDE_CONFIG = new IUnlistedProperty[6];
+
+	static {
+		for (int i = 0; i < 6; i++) {
+			TEProps.SIDE_CONFIG[i] = Properties.toUnlisted(PropertyEnum.<EnumSideConfig> create("config_" + EnumFacing.VALUES[i].name(), EnumSideConfig.class));
+		}
+	}
 
 }

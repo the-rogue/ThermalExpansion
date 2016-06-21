@@ -1,15 +1,14 @@
 package cofh.thermalexpansion.gui.client;
 
-import cofh.core.gui.GuiBaseAdv;
-import cofh.core.gui.element.TabAugment;
-import cofh.core.gui.element.TabConfiguration;
-import cofh.core.gui.element.TabEnergy;
-import cofh.core.gui.element.TabInfo;
-import cofh.core.gui.element.TabRedstone;
-import cofh.core.gui.element.TabSecurity;
-import cofh.core.gui.element.TabTutorial;
 import cofh.lib.gui.container.IAugmentableContainer;
-import cofh.lib.gui.element.TabBase;
+import cofh.lib.gui.element.tab.TabAugment;
+import cofh.lib.gui.element.tab.TabBase;
+import cofh.lib.gui.element.tab.TabConfiguration;
+import cofh.lib.gui.element.tab.TabEnergy;
+import cofh.lib.gui.element.tab.TabInfo;
+import cofh.lib.gui.element.tab.TabRedstone;
+import cofh.lib.gui.element.tab.TabSecurity;
+import cofh.lib.gui.element.tab.TabTutorial;
 import cofh.lib.util.helpers.SecurityHelper;
 import cofh.lib.util.helpers.StringHelper;
 import cofh.thermalexpansion.block.TileAugmentable;
@@ -19,10 +18,10 @@ import java.util.UUID;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.Container;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.common.util.ForgeDirection;
 
-public abstract class GuiAugmentableBase extends GuiBaseAdv {
+public abstract class GuiAugmentableBase extends GuiTEBase {
 
 	protected TileAugmentable myTile;
 	protected UUID playerName;
@@ -37,7 +36,7 @@ public abstract class GuiAugmentableBase extends GuiBaseAdv {
 		super(container, texture);
 
 		myTile = (TileAugmentable) tile;
-		name = myTile.getInventoryName();
+		name = myTile.getDisplayName().getUnformattedText();
 		playerName = SecurityHelper.getID(player);
 
 		if (myTile.enableSecurity() && myTile.isSecured()) {
@@ -49,7 +48,7 @@ public abstract class GuiAugmentableBase extends GuiBaseAdv {
 		if (myTile.augmentReconfigSides) {
 			myTutorial += "\n\n" + StringHelper.tutorialTabConfiguration();
 		}
-		if (myTile.getMaxEnergyStored(ForgeDirection.UNKNOWN) > 0) {
+		if (myTile.getMaxEnergyStored(EnumFacing.DOWN) > 0) {
 			myTutorial += "\n\n" + StringHelper.tutorialTabFluxRequired();
 		}
 	}
@@ -66,7 +65,7 @@ public abstract class GuiAugmentableBase extends GuiBaseAdv {
 		redstoneTab = addTab(new TabRedstone(this, myTile));
 		configTab = addTab(new TabConfiguration(this, myTile));
 
-		if (myTile.getMaxEnergyStored(ForgeDirection.UNKNOWN) > 0) {
+		if (myTile.getMaxEnergyStored(EnumFacing.DOWN) > 0) {
 			addTab(new TabEnergy(this, myTile, false));
 		}
 		if (!myInfo.isEmpty()) {
@@ -90,8 +89,8 @@ public abstract class GuiAugmentableBase extends GuiBaseAdv {
 
 		super.updateElementInformation();
 
-		redstoneTab.setVisible(myTile.augmentRedstoneControl);
-		configTab.setVisible(myTile.augmentReconfigSides);
+		//redstoneTab.setVisible(myTile.augmentRedstoneControl);
+		//configTab.setVisible(myTile.augmentReconfigSides);
 	}
 
 }

@@ -2,45 +2,46 @@ package cofh.thermalexpansion.block.machine;
 
 import cofh.core.network.PacketCoFHBase;
 import cofh.core.util.CoreUtils;
+import cofh.lib.util.helpers.ItemHelper;
 import cofh.lib.util.helpers.MathHelper;
 import cofh.thermalexpansion.ThermalExpansion;
-import cofh.thermalexpansion.block.machine.BlockMachine.Types;
 import cofh.thermalexpansion.gui.client.machine.GuiSmelter;
 import cofh.thermalexpansion.gui.container.machine.ContainerSmelter;
 import cofh.thermalexpansion.util.crafting.SmelterManager;
 import cofh.thermalexpansion.util.crafting.SmelterManager.RecipeSmelter;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.EnumFacing;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 
 public class TileSmelter extends TileMachineBase {
 
 	public static void initialize() {
 
-		int type = BlockMachine.Types.SMELTER.ordinal();
+		int type = BlockMachine.Type.SMELTER.ordinal();
 
-		defaultSideConfig[type] = new SideConfig();
-		defaultSideConfig[type].numConfig = 8;
-		defaultSideConfig[type].slotGroups = new int[][] { {}, { 0, 1 }, { 2, 3 }, { 4 }, { 2, 3, 4 }, { 0 }, { 1 }, { 0, 1, 2, 3, 4 } };
-		defaultSideConfig[type].allowInsertionSide = new boolean[] { false, true, false, false, false, true, true, true };
-		defaultSideConfig[type].allowExtractionSide = new boolean[] { false, true, true, true, true, false, false, true };
-		defaultSideConfig[type].allowInsertionSlot = new boolean[] { true, true, false, false, false, false };
-		defaultSideConfig[type].allowExtractionSlot = new boolean[] { true, true, true, true, true, false };
-		defaultSideConfig[type].sideTex = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
-		defaultSideConfig[type].defaultSides = new byte[] { 3, 1, 2, 2, 2, 2 };
+		DEFAULT_SIDE_CONFIG[type] = new SideConfig();
+		DEFAULT_SIDE_CONFIG[type].numConfig = 8;
+		DEFAULT_SIDE_CONFIG[type].slotGroups = new int[][] { {}, { 0, 1 }, { 2, 3 }, { 4 }, { 2, 3, 4 }, { 0 }, { 1 }, { 0, 1, 2, 3, 4 } };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSide = new boolean[] { false, true, false, false, false, true, true, true };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSide = new boolean[] { false, true, true, true, true, false, false, true };
+		DEFAULT_SIDE_CONFIG[type].allowInsertionSlot = new boolean[] { true, true, false, false, false, false };
+		DEFAULT_SIDE_CONFIG[type].allowExtractionSlot = new boolean[] { true, true, true, true, true, false };
+		DEFAULT_SIDE_CONFIG[type].sideTex = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
+		DEFAULT_SIDE_CONFIG[type].defaultSides = new byte[] { 3, 1, 2, 2, 2, 2 };
 
 		String category = "Machine.Smelter";
-		int basePower = MathHelper.clamp(ThermalExpansion.config.get(category, "BasePower", 40), 10, 500);
-		ThermalExpansion.config.set(category, "BasePower", basePower);
-		defaultEnergyConfig[type] = new EnergyConfig();
-		defaultEnergyConfig[type].setParamsPower(basePower);
+		int basePower = MathHelper.clamp(ThermalExpansion.CONFIG.get(category, "BasePower", 40), 10, 500);
+		ThermalExpansion.CONFIG.set(category, "BasePower", basePower);
+		DEFAULT_ENERGY_CONFIG[type] = new EnergyConfig();
+		DEFAULT_ENERGY_CONFIG[type].setParamsPower(basePower);
 
-		sounds[type] = CoreUtils.getSoundName(ThermalExpansion.modId, "blockMachineSmelter");
+		SOUNDS[type] = CoreUtils.getSoundName(ThermalExpansion.modId, "blockMachineSmelter");
 
-		GameRegistry.registerTileEntity(TileSmelter.class, "thermalexpansion.Smelter");
+		GameRegistry.registerTileEntity(TileSmelter.class, "thermalexpansion.machineSmelter");
 	}
 
 	int inputTrackerPrimary;
@@ -52,7 +53,7 @@ public class TileSmelter extends TileMachineBase {
 
 	public TileSmelter() {
 
-		super(Types.SMELTER);
+		super(BlockMachine.Type.SMELTER);
 		inventory = new ItemStack[2 + 2 + 1 + 1];
 	}
 
@@ -147,8 +148,8 @@ public class TileSmelter extends TileMachineBase {
 			processRem = 0;
 			return;
 		}
-		ItemStack primaryItem = recipe.getPrimaryOutput();
-		ItemStack secondaryItem = recipe.getSecondaryOutput();
+		ItemStack primaryItem = ItemHelper.cloneStack(recipe.getPrimaryOutput());
+		ItemStack secondaryItem = ItemHelper.cloneStack(recipe.getSecondaryOutput());
 		if (inventory[2] == null) {
 			inventory[2] = primaryItem;
 		} else if (inventory[2].isItemEqual(primaryItem)) {
@@ -218,7 +219,7 @@ public class TileSmelter extends TileMachineBase {
 		for (int i = inputTrackerPrimary + 1; i <= inputTrackerPrimary + 6; i++) {
 			side = i % 6;
 			if (sideCache[side] == 1 || sideCache[side] == 5) {
-				if (extractItem(0, AUTO_TRANSFER[level], side)) {
+				if (extractItem(0, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					inputTrackerPrimary = side;
 					break;
 				}
@@ -227,7 +228,7 @@ public class TileSmelter extends TileMachineBase {
 		for (int i = inputTrackerPrimary + 1; i <= inputTrackerPrimary + 6; i++) {
 			side = i % 6;
 			if (sideCache[side] == 1 || sideCache[side] == 6) {
-				if (extractItem(1, AUTO_TRANSFER[level], side)) {
+				if (extractItem(1, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					inputTrackerSecondary = side;
 					break;
 				}
@@ -246,13 +247,13 @@ public class TileSmelter extends TileMachineBase {
 			for (int i = outputTrackerPrimary + 1; i <= outputTrackerPrimary + 6; i++) {
 				side = i % 6;
 				if (sideCache[side] == 2 || sideCache[side] == 4) {
-					if (transferItem(2, AUTO_TRANSFER[level] >> 1, side)) {
-						if (!transferItem(3, AUTO_TRANSFER[level] >> 1, side)) {
-							transferItem(2, AUTO_TRANSFER[level] >> 1, side);
+					if (transferItem(2, AUTO_TRANSFER[level] >> 1, EnumFacing.VALUES[side])) {
+						if (!transferItem(3, AUTO_TRANSFER[level] >> 1, EnumFacing.VALUES[side])) {
+							transferItem(2, AUTO_TRANSFER[level] >> 1, EnumFacing.VALUES[side]);
 						}
 						outputTrackerPrimary = side;
 						break;
-					} else if (transferItem(3, AUTO_TRANSFER[level], side)) {
+					} else if (transferItem(3, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 						outputTrackerPrimary = side;
 						break;
 					}
@@ -265,7 +266,7 @@ public class TileSmelter extends TileMachineBase {
 		for (int i = outputTrackerSecondary + 1; i <= outputTrackerSecondary + 6; i++) {
 			side = i % 6;
 			if (sideCache[side] == 3 || sideCache[side] == 4) {
-				if (transferItem(4, AUTO_TRANSFER[level], side)) {
+				if (transferItem(4, AUTO_TRANSFER[level], EnumFacing.VALUES[side])) {
 					outputTrackerSecondary = side;
 					break;
 				}

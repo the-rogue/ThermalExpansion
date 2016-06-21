@@ -9,8 +9,6 @@ import cofh.lib.util.helpers.ItemHelper;
 import cofh.thermalexpansion.gui.client.dynamo.GuiDynamoEnervation;
 import cofh.thermalexpansion.gui.container.dynamo.ContainerDynamoEnervation;
 import cofh.thermalexpansion.util.FuelManager;
-import cofh.thermalfoundation.fluid.TFFluids;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import gnu.trove.map.hash.THashMap;
 
@@ -21,15 +19,14 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.IIcon;
+import net.minecraft.util.EnumFacing;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 
 public class TileDynamoEnervation extends TileDynamoBase {
 
-	static final int TYPE = BlockDynamo.Types.ENERVATION.ordinal();
-
 	public static void initialize() {
 
-		GameRegistry.registerTileEntity(TileDynamoEnervation.class, "thermalexpansion.DynamoEnervation");
+		GameRegistry.registerTileEntity(TileDynamoEnervation.class, "thermalexpansion.dynamoEnervation");
 	}
 
 	int currentFuelRF = getEnergyValue(redstone);
@@ -38,12 +35,6 @@ public class TileDynamoEnervation extends TileDynamoBase {
 
 		super();
 		inventory = new ItemStack[1];
-	}
-
-	@Override
-	public int getType() {
-
-		return TYPE;
 	}
 
 	@Override
@@ -76,12 +67,6 @@ public class TileDynamoEnervation extends TileDynamoBase {
 		energy = Math.min(fuelRF, calcEnergy() * energyMod);
 		energyStorage.modifyEnergyStored(energy);
 		fuelRF -= energy;
-	}
-
-	@Override
-	public IIcon getActiveIcon() {
-
-		return TFFluids.fluidRedstone.getIcon();
 	}
 
 	/* GUI METHODS */
@@ -164,9 +149,9 @@ public class TileDynamoEnervation extends TileDynamoBase {
 
 	/* ISidedInventory */
 	@Override
-	public int[] getAccessibleSlotsFromSide(int side) {
+	public int[] getSlotsForFace(EnumFacing side) {
 
-		return side != facing || augmentCoilDuct ? SLOTS : CoFHProps.EMPTY_INVENTORY;
+		return side != EnumFacing.VALUES[facing] || augmentCoilDuct ? SLOTS : CoFHProps.EMPTY_INVENTORY;
 	}
 
 	/* FUEL MANAGER */

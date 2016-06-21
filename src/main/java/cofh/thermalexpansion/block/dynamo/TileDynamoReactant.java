@@ -7,7 +7,6 @@ import cofh.lib.inventory.ComparableItemStack;
 import cofh.lib.util.helpers.ItemHelper;
 import cofh.thermalexpansion.gui.client.dynamo.GuiDynamoReactant;
 import cofh.thermalexpansion.gui.container.dynamo.ContainerDynamoReactant;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import gnu.trove.map.hash.TObjectIntHashMap;
 
@@ -15,22 +14,20 @@ import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.IIcon;
-import net.minecraftforge.common.util.ForgeDirection;
+import net.minecraft.util.EnumFacing;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidContainerRegistry;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.FluidTankInfo;
 import net.minecraftforge.fluids.IFluidHandler;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 
 public class TileDynamoReactant extends TileDynamoBase implements IFluidHandler {
 
-	static final int TYPE = BlockDynamo.Types.REACTANT.ordinal();
-
 	public static void initialize() {
 
-		GameRegistry.registerTileEntity(TileDynamoReactant.class, "thermalexpansion.DynamoReactant");
+		GameRegistry.registerTileEntity(TileDynamoReactant.class, "thermalexpansion.dynamoReactant");
 	}
 
 	FluidTankAdv tank = new FluidTankAdv(MAX_FLUID);
@@ -44,12 +41,6 @@ public class TileDynamoReactant extends TileDynamoBase implements IFluidHandler 
 
 		super();
 		inventory = new ItemStack[1];
-	}
-
-	@Override
-	public int getType() {
-
-		return TYPE;
 	}
 
 	@Override
@@ -84,12 +75,6 @@ public class TileDynamoReactant extends TileDynamoBase implements IFluidHandler 
 		energyStorage.modifyEnergyStored(energy);
 		fuelRF -= energy;
 		reactantRF -= energy;
-	}
-
-	@Override
-	public IIcon getActiveIcon() {
-
-		return renderFluid.getFluid().getIcon();
 	}
 
 	/* GUI METHODS */
@@ -198,9 +183,9 @@ public class TileDynamoReactant extends TileDynamoBase implements IFluidHandler 
 
 	/* IFluidHandler */
 	@Override
-	public int fill(ForgeDirection from, FluidStack resource, boolean doFill) {
+	public int fill(EnumFacing from, FluidStack resource, boolean doFill) {
 
-		if (resource == null || !augmentCoilDuct && from.ordinal() == facing) {
+		if (resource == null || !augmentCoilDuct && from != null && from.ordinal() == facing) {
 			return 0;
 		}
 		if (isValidFuel(resource)) {
@@ -210,9 +195,9 @@ public class TileDynamoReactant extends TileDynamoBase implements IFluidHandler 
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, FluidStack resource, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, FluidStack resource, boolean doDrain) {
 
-		if (resource == null || !augmentCoilDuct && from.ordinal() == facing) {
+		if (resource == null || !augmentCoilDuct && from != null && from.ordinal() == facing) {
 			return null;
 		}
 		if (isValidFuel(resource)) {
@@ -222,16 +207,16 @@ public class TileDynamoReactant extends TileDynamoBase implements IFluidHandler 
 	}
 
 	@Override
-	public FluidStack drain(ForgeDirection from, int maxDrain, boolean doDrain) {
+	public FluidStack drain(EnumFacing from, int maxDrain, boolean doDrain) {
 
-		if (!augmentCoilDuct && from.ordinal() == facing) {
+		if (!augmentCoilDuct && from != null && from.ordinal() == facing) {
 			return null;
 		}
 		return tank.drain(maxDrain, doDrain);
 	}
 
 	@Override
-	public FluidTankInfo[] getTankInfo(ForgeDirection from) {
+	public FluidTankInfo[] getTankInfo(EnumFacing from) {
 
 		return new FluidTankInfo[] { tank.getInfo() };
 	}
@@ -245,9 +230,9 @@ public class TileDynamoReactant extends TileDynamoBase implements IFluidHandler 
 
 	/* ISidedInventory */
 	@Override
-	public int[] getAccessibleSlotsFromSide(int side) {
+	public int[] getSlotsForFace(EnumFacing side) {
 
-		return side != facing || augmentCoilDuct ? SLOTS : CoFHProps.EMPTY_INVENTORY;
+		return side != EnumFacing.VALUES[facing] || augmentCoilDuct ? SLOTS : CoFHProps.EMPTY_INVENTORY;
 	}
 
 	/* FUEL MANAGER */

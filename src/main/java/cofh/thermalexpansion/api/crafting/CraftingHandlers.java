@@ -19,9 +19,10 @@ public class CraftingHandlers {
 	public static IPulverizerHandler pulverizer;
 	public static ISawmillHandler sawmill;
 	public static ISmelterHandler smelter;
+	public static IInsolatorHandler insolator;
+	public static IChargerHandler charger;
 	public static ICrucibleHandler crucible;
 	public static ITransposerHandler transposer;
-	public static IChargerHandler charger;
-	public static IInsolatorHandler insolator;
+	public static ICentrifugeHandler centrifuge;
 
 }

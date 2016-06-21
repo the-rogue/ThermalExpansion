@@ -1,98 +1,59 @@
 package cofh.thermalexpansion;
 
-import cofh.CoFHCore;
 import cofh.core.CoFHProps;
 import cofh.core.network.PacketCoFHBase;
+import cofh.core.network.PacketCore;
+import cofh.core.network.PacketCore.PacketTypes;
 import cofh.core.util.ConfigHandler;
-import cofh.lib.util.helpers.StringHelper;
-import cofh.mod.BaseMod;
-import cofh.mod.updater.UpdateManager;
 import cofh.thermalexpansion.block.TEBlocks;
-import cofh.thermalexpansion.block.cell.BlockCell;
-import cofh.thermalexpansion.block.cell.TileCell;
-import cofh.thermalexpansion.block.device.BlockDevice;
-import cofh.thermalexpansion.block.device.TileDeviceBase;
-import cofh.thermalexpansion.block.dynamo.BlockDynamo;
-import cofh.thermalexpansion.block.dynamo.TileDynamoBase;
-import cofh.thermalexpansion.block.machine.BlockMachine;
-import cofh.thermalexpansion.block.machine.TileMachineBase;
-import cofh.thermalexpansion.block.strongbox.TileStrongbox;
-import cofh.thermalexpansion.block.workbench.TileWorkbench;
 import cofh.thermalexpansion.core.Proxy;
-import cofh.thermalexpansion.core.TEAchievements;
 import cofh.thermalexpansion.core.TEProps;
-import cofh.thermalexpansion.core.TeleportChannelRegistry;
+import cofh.thermalexpansion.gui.CreativeTabTE;
+import cofh.thermalexpansion.gui.CreativeTabTEFlorbs;
 import cofh.thermalexpansion.gui.GuiHandler;
-import cofh.thermalexpansion.gui.TECreativeTab;
-import cofh.thermalexpansion.gui.TECreativeTabFlorbs;
-import cofh.thermalexpansion.item.ItemSatchel;
-import cofh.thermalexpansion.item.TEItems;
-import cofh.thermalexpansion.network.PacketTEBase;
-import cofh.thermalexpansion.network.PacketTEBase.PacketTypes;
-import cofh.thermalexpansion.plugins.TEPlugins;
-import cofh.thermalexpansion.plugins.nei.handlers.NEIRecipeWrapper;
-import cofh.thermalexpansion.util.FMLEventHandler;
 import cofh.thermalexpansion.util.FuelManager;
 import cofh.thermalexpansion.util.IMCHandler;
 import cofh.thermalexpansion.util.crafting.ChargerManager;
 import cofh.thermalexpansion.util.crafting.CrucibleManager;
-import cofh.thermalexpansion.util.crafting.ExtruderManager;
 import cofh.thermalexpansion.util.crafting.FurnaceManager;
 import cofh.thermalexpansion.util.crafting.InsolatorManager;
-import cofh.thermalexpansion.util.crafting.PrecipitatorManager;
 import cofh.thermalexpansion.util.crafting.PulverizerManager;
-import cofh.thermalexpansion.util.crafting.RecipeMachine;
-import cofh.thermalexpansion.util.crafting.RecipeMachineUpgrade;
-import cofh.thermalexpansion.util.crafting.RecipeStyle;
 import cofh.thermalexpansion.util.crafting.SawmillManager;
 import cofh.thermalexpansion.util.crafting.SmelterManager;
-import cofh.thermalexpansion.util.crafting.TECraftingHandler;
-import cofh.thermalexpansion.util.crafting.TECraftingParser;
 import cofh.thermalexpansion.util.crafting.TransposerManager;
 import cofh.thermalfoundation.ThermalFoundation;
-import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.Mod.CustomProperty;
-import cpw.mods.fml.common.Mod.EventHandler;
-import cpw.mods.fml.common.Mod.Instance;
-import cpw.mods.fml.common.SidedProxy;
-import cpw.mods.fml.common.event.FMLInitializationEvent;
-import cpw.mods.fml.common.event.FMLInterModComms;
-import cpw.mods.fml.common.event.FMLInterModComms.IMCEvent;
-import cpw.mods.fml.common.event.FMLLoadCompleteEvent;
-import cpw.mods.fml.common.event.FMLMissingMappingsEvent;
-import cpw.mods.fml.common.event.FMLMissingMappingsEvent.MissingMapping;
-import cpw.mods.fml.common.event.FMLPostInitializationEvent;
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
-import cpw.mods.fml.common.event.FMLServerStartedEvent;
-import cpw.mods.fml.common.network.NetworkRegistry;
-import cpw.mods.fml.common.registry.GameRegistry;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
-import net.minecraftforge.oredict.OreDictionary;
-import net.minecraftforge.oredict.RecipeSorter;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.CustomProperty;
+import net.minecraftforge.fml.common.Mod.EventHandler;
+import net.minecraftforge.fml.common.Mod.Instance;
+import net.minecraftforge.fml.common.SidedProxy;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLInterModComms;
+import net.minecraftforge.fml.common.event.FMLInterModComms.IMCEvent;
+import net.minecraftforge.fml.common.event.FMLLoadCompleteEvent;
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
+import net.minecraftforge.fml.common.network.NetworkRegistry;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 @Mod(modid = ThermalExpansion.modId, name = ThermalExpansion.modName, version = ThermalExpansion.version, dependencies = ThermalExpansion.dependencies,
-		guiFactory = ThermalExpansion.modGuiFactory, customProperties = @CustomProperty(k = "cofhversion", v = "true"))
-public class ThermalExpansion extends BaseMod {
+		guiFactory = ThermalExpansion.modGuiFactory, canBeDeactivated = false, customProperties = @CustomProperty(k = "cofhversion", v = "true"))
+public class ThermalExpansion {
 
-	public static final String modId = "ThermalExpansion";
+	public static final String modId = "thermalexpansion";
 	public static final String modName = "Thermal Expansion";
-	public static final String version = "1.7.10R4.1.3B1";
-	public static final String version_max = "1.7.10R4.2.0";
-	public static final String dependencies = CoFHCore.version_group + ThermalFoundation.version_group;
+	public static final String version = "1.8.9R4.2.0";
+	public static final String version_max = "1.8.9R4.3.0";
+	public static final String dependencies = ThermalFoundation.version_group;
 	public static final String modGuiFactory = "cofh.thermalexpansion.gui.GuiConfigTEFactory";
 
 	public static final String version_group = "required-after:" + modId + "@[" + version + "," + version_max + ");";
@@ -104,12 +65,12 @@ public class ThermalExpansion extends BaseMod {
 	@SidedProxy(clientSide = "cofh.thermalexpansion.core.ProxyClient", serverSide = "cofh.thermalexpansion.core.Proxy")
 	public static Proxy proxy;
 
-	public static final Logger log = LogManager.getLogger(modId);
-	public static final ConfigHandler config = new ConfigHandler(version);
-	public static final ConfigHandler configClient = new ConfigHandler(version);
-	public static final GuiHandler guiHandler = new GuiHandler();
+	public static final Logger LOG = LogManager.getLogger(modId);
+	public static final ConfigHandler CONFIG = new ConfigHandler(version);
+	public static final ConfigHandler CONFIG_CLIENT = new ConfigHandler(version);
+	public static final GuiHandler GUI_HANDLER = new GuiHandler();
 
-	public static CreativeTabs tabCommon = null;
+	public static CreativeTabs tabCommon = new CreativeTabTE();
 	public static CreativeTabs tabBlocks = tabCommon;
 	public static CreativeTabs tabItems = tabCommon;
 	public static CreativeTabs tabTools = tabCommon;
@@ -118,76 +79,36 @@ public class ThermalExpansion extends BaseMod {
 	/* INIT SEQUENCE */
 	public ThermalExpansion() {
 
-		super(log);
+		//super(log);
 	}
 
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
 
-		UpdateManager.registerUpdater(new UpdateManager(this, releaseURL, CoFHProps.DOWNLOAD_URL));
-		config.setConfiguration(new Configuration(new File(CoFHProps.configDir, "cofh/thermalexpansion/common.cfg"), true));
-		configClient.setConfiguration(new Configuration(new File(CoFHProps.configDir, "cofh/thermalexpansion/client.cfg"), true));
+		CONFIG.setConfiguration(new Configuration(new File(CoFHProps.configDir, "/cofh/thermalexpansion/common.cfg"), true));
+		CONFIG_CLIENT.setConfiguration(new Configuration(new File(CoFHProps.configDir, "cofh/thermalexpansion/client.cfg"), true));
 
-		FMLEventHandler.initialize();
-		TECraftingHandler.initialize();
-		TECraftingParser.initialize();
-
-		RecipeSorter.register("thermalexpansion:machine", RecipeMachine.class, RecipeSorter.Category.SHAPED, "before:cofh:upgrade");
-		RecipeSorter.register("thermalexpansion:machineUpgrade", RecipeMachineUpgrade.class, RecipeSorter.Category.SHAPED, "before:cofh:upgrade");
-		RecipeSorter.register("thermalexpansion:style", RecipeStyle.class, RecipeSorter.Category.SHAPED, "after:forge:shapedore");
-		RecipeSorter.register("thermalexpansion:NEIWrapper", NEIRecipeWrapper.class, RecipeSorter.Category.UNKNOWN, "after:forge:shapedore");
-
-		cleanConfig(true);
-		configOptions();
-
-		TEItems.preInit();
 		TEBlocks.preInit();
-		TEPlugins.preInit();
+
+		proxy.preInit(event);
 	}
 
 	@EventHandler
 	public void initialize(FMLInitializationEvent event) {
 
-		registerMachineOreDict();
-		TEItems.initialize();
 		TEBlocks.initialize();
-		TEPlugins.initialize();
-		TeleportChannelRegistry.initialize();
 
-		if (TEProps.enableAchievements) {
-			TEAchievements.initialize();
-		}
-		/* Register Handlers */
-		NetworkRegistry.INSTANCE.registerGuiHandler(instance, guiHandler);
-		MinecraftForge.EVENT_BUS.register(proxy);
-		PacketTEBase.initialize();
+		NetworkRegistry.INSTANCE.registerGuiHandler(instance, GUI_HANDLER);
+
+		proxy.initialize(event);
 	}
 
 	@EventHandler
 	public void postInit(FMLPostInitializationEvent event) {
 
-		try {
-			TECraftingParser.parseCraftingFiles();
-		} catch (Throwable t) {
-			t.printStackTrace();
-		}
-		FurnaceManager.addDefaultRecipes();
-		PulverizerManager.addDefaultRecipes();
-		SawmillManager.addDefaultRecipes();
-		SmelterManager.addDefaultRecipes();
-		CrucibleManager.addDefaultRecipes();
-		TransposerManager.addDefaultRecipes();
-		PrecipitatorManager.addDefaultRecipes();
-		ExtruderManager.addDefaultRecipes();
-		ChargerManager.addDefaultRecipes();
-		InsolatorManager.addDefaultRecipes();
-
-		TEItems.postInit();
 		TEBlocks.postInit();
-		TEPlugins.postInit();
 
-		proxy.registerEntities();
-		proxy.registerRenderInformation();
+		proxy.postInit(event);
 	}
 
 	@EventHandler
@@ -195,147 +116,50 @@ public class ThermalExpansion extends BaseMod {
 
 		IMCHandler.instance.handleIMC(FMLInterModComms.fetchRuntimeMessages(this));
 
-		TECraftingHandler.loadRecipes();
 		FurnaceManager.loadRecipes();
 		PulverizerManager.loadRecipes();
 		SawmillManager.loadRecipes();
 		SmelterManager.loadRecipes();
+		InsolatorManager.loadRecipes();
+		ChargerManager.loadRecipes();
 		CrucibleManager.loadRecipes();
 		TransposerManager.loadRecipes();
-		PrecipitatorManager.loadRecipes();
-		ExtruderManager.loadRecipes();
-		ChargerManager.loadRecipes();
-		InsolatorManager.loadRecipes();
 
 		FuelManager.parseFuels();
 
-		TEPlugins.loadComplete();
+		CONFIG.cleanUp(false, true);
+		CONFIG_CLIENT.cleanUp(false, true);
 
-		cleanConfig(false);
-		config.cleanUp(false, true);
-		configClient.cleanUp(false, true);
-
-		log.info("Thermal Expansion: Load Complete.");
+		LOG.info(modName + ": Load Complete.");
 	}
 
 	@EventHandler
-	public void serverStart(FMLServerAboutToStartEvent event) {
+	public void serverStarting(FMLServerStartingEvent event) {
 
-		TeleportChannelRegistry.createServerRegistry();
-		TeleportChannelRegistry.createClientRegistry();
 	}
 
+	/* IMC */
 	@EventHandler
-	public void serverStarting(FMLServerStartedEvent event) {
+	public void handleIMC(IMCEvent event) {
 
-		handleIdMapping();
 	}
 
-	@EventHandler
-	public void handleIMC(IMCEvent theIMC) {
-
-		IMCHandler.instance.handleIMC(theIMC.getMessages());
-	}
-
-	public void handleConfigSync(PacketCoFHBase payload) {
-
-		handleIdMapping();
-
-		for (int i = 0; i < TileDeviceBase.enableSecurity.length; i++) {
-			TileDeviceBase.enableSecurity[i] = payload.getBool();
-		}
-		for (int i = 0; i < TileMachineBase.enableSecurity.length; i++) {
-			TileMachineBase.enableSecurity[i] = payload.getBool();
-		}
-		TileDynamoBase.enableSecurity = payload.getBool();
-		TileCell.enableSecurity = payload.getBool();
-		TileStrongbox.enableSecurity = payload.getBool();
-		TileWorkbench.enableSecurity = payload.getBool();
-
-		ItemSatchel.enableSecurity = payload.getBool();
-
-		log.info("Receiving Server Configuration...");
-		TeleportChannelRegistry.createClientRegistry();
-	}
-
+	/* SYNC */
 	public PacketCoFHBase getConfigSync() {
 
-		PacketCoFHBase payload = PacketTEBase.getPacket(PacketTypes.CONFIG_SYNC);
-
-		for (int i = 0; i < TileDeviceBase.enableSecurity.length; i++) {
-			payload.addBool(TileDeviceBase.enableSecurity[i]);
-		}
-		for (int i = 0; i < TileMachineBase.enableSecurity.length; i++) {
-			payload.addBool(TileMachineBase.enableSecurity[i]);
-		}
-		payload.addBool(TileDynamoBase.enableSecurity);
-		payload.addBool(TileCell.enableSecurity);
-		payload.addBool(TileStrongbox.enableSecurity);
-		payload.addBool(TileWorkbench.enableSecurity);
-
-		payload.addBool(ItemSatchel.enableSecurity);
+		PacketCoFHBase payload = PacketCore.getPacket(PacketTypes.CONFIG_SYNC);
 
 		return payload;
 	}
 
-	public synchronized void handleIdMapping() {
+	public void handleConfigSync(PacketCoFHBase payload) {
 
-		FurnaceManager.refreshRecipes();
-		PulverizerManager.refreshRecipes();
-		SawmillManager.refreshRecipes();
-		SmelterManager.refreshRecipes();
-		CrucibleManager.refreshRecipes();
-		TransposerManager.refreshRecipes();
-		PrecipitatorManager.refreshRecipes();
-		ExtruderManager.refreshRecipes();
-		ChargerManager.refreshRecipes();
-		InsolatorManager.refreshRecipes();
-
-		BlockDevice.refreshItemStacks();
-		BlockDynamo.refreshItemStacks();
-		BlockMachine.refreshItemStacks();
 	}
 
-	// Called when the client disconnects from the server.
-	public void resetClientConfigs() {
-
-		TileCell.configure();
-		TileDeviceBase.configure();
-		TileDynamoBase.configure();
-		TileMachineBase.configure();
-		TileWorkbench.configure();
-		TileStrongbox.configure();
-		ItemSatchel.configure();
-
-		handleIdMapping();
-
-		log.info(StringHelper.localize("Restoring Client Configuration..."));
-	}
-
-	/* LOADING FUNCTIONS */
-	void registerMachineOreDict() {
-
-		String category;
-		String comment;
-
-		/* GENERAL */
-		category = "General";
-		comment = "If enabled, ingots are used instead of gears in many default recipes.";
-		String iPrefix = ThermalExpansion.config.get(category, "UseIngots", false, comment) ? "ingot" : "gear";
-		for (String entry : Arrays.asList("Iron", "Gold", "Copper", "Tin", "Silver", "Lead", "Nickel", "Platinum", "Mithril", "Electrum", "Invar", "Bronze",
-			"Signalum", "Lumium", "Enderium")) {
-			String prefix = "thermalexpansion:machine";
-			ArrayList<ItemStack> partList = OreDictionary.getOres(iPrefix + entry);
-			for (int i = 0; i < partList.size(); i++) {
-				OreDictionary.registerOre(prefix + entry, partList.get(i));
-			}
-		}
-	}
-
+	/* HELPERS */
 	void configOptions() {
 
 		String category;
-		@SuppressWarnings("unused")
 		String comment;
 
 		/* GRAPHICS */
@@ -343,10 +167,10 @@ public class ThermalExpansion extends BaseMod {
 			TEProps.textureGuiCommon = TEProps.PATH_COMMON_CB;
 			TEProps.textureGuiAssembler = TEProps.PATH_ASSEMBLER_CB;
 			TEProps.textureSelection = TEProps.TEXTURE_CB;
-			BlockCell.textureSelection = BlockCell.TEXTURE_CB;
+			//BlockCell.textureSelection = BlockCell.TEXTURE_CB;
 		}
-		TEProps.useAlternateStarfieldShader = ThermalExpansion.configClient.get("Render", "UseAlternateShader", true,
-			"Set to TRUE for Tesseracts to use an alternate starfield shader.");
+		TEProps.useAlternateStarfieldShader = ThermalExpansion.CONFIG_CLIENT.get("Render", "UseAlternateShader", true,
+				"Set to TRUE for Tesseracts to use an alternate starfield shader.");
 
 		/* INTERFACE */
 		category = "Interface.CreativeTab";
@@ -356,21 +180,21 @@ public class ThermalExpansion extends BaseMod {
 		boolean florbTab = false;
 
 		comment = "Set to TRUE to put Thermal Expansion Blocks under a general \"Thermal Expansion\" Creative Tab.";
-		blockTab = configClient.get(category, "BlocksInCommonTab", blockTab);
+		blockTab = CONFIG_CLIENT.get(category, "BlocksInCommonTab", blockTab);
 
 		comment = "Set to TRUE to put Thermal Expansion Items under a general \"Thermal Expansion\" Creative Tab.";
-		itemTab = configClient.get(category, "ItemsInCommonTab", itemTab);
+		itemTab = CONFIG_CLIENT.get(category, "ItemsInCommonTab", itemTab);
 
 		comment = "Set to TRUE to put Thermal Expansion Tools under a general \"Thermal Expansion\" Creative Tab.";
-		toolTab = configClient.get(category, "ToolsInCommonTab", toolTab);
+		toolTab = CONFIG_CLIENT.get(category, "ToolsInCommonTab", toolTab);
 
 		comment = "Set to TRUE to put Thermal Expansion Florbs under a general \"Thermal Expansion\" Creative Tab.";
-		florbTab = configClient.get(category, "FlorbsInCommonTab", florbTab);
+		florbTab = CONFIG_CLIENT.get(category, "FlorbsInCommonTab", florbTab);
 
 		if (blockTab || itemTab || toolTab || florbTab) {
-			tabCommon = new TECreativeTab();
+			tabCommon = new CreativeTabTE();
 		}
-		tabBlocks = blockTab ? tabCommon : new TECreativeTab("Blocks") {
+		tabBlocks = blockTab ? tabCommon : new CreativeTabTE("Blocks") {
 
 			//	@Override
 			//	protected ItemStack getStack() {
@@ -378,90 +202,39 @@ public class ThermalExpansion extends BaseMod {
 			//		return BlockFrame.frameCellReinforcedFull;
 			//	}
 		};
-		tabItems = itemTab ? tabCommon : new TECreativeTab("Items") {
+		tabItems = itemTab ? tabCommon : new CreativeTabTE("Items") {
 
 			@Override
 			protected ItemStack getStack() {
 
-				return TEItems.powerCoilElectrum;
+				return null;
+				//return TEItems.powerCoilElectrum;
 			}
 		};
-		tabTools = toolTab ? tabCommon : new TECreativeTab("Tools") {
+		tabTools = toolTab ? tabCommon : new CreativeTabTE("Tools") {
 
 			@Override
 			protected ItemStack getStack() {
 
-				return TEItems.toolWrench;
+				return null;
+				//return TEItems.toolWrench;
 			}
 		};
-		tabFlorbs = florbTab ? tabCommon : new TECreativeTabFlorbs();
+		tabFlorbs = florbTab ? tabCommon : new CreativeTabTEFlorbs();
 		// TEProps.enableDebugOutput = config.get(category, "EnableDebugOutput", TEProps.enableDebugOutput);
 		// TEProps.enableAchievements = config.get(category, "EnableAchievements", TEProps.enableAchievements);
 	}
 
-	void cleanConfig(boolean preInit) {
+	public synchronized void handleIdMapping() {
 
-		if (preInit) {
-
-		}
-		String prefix = "config.thermalexpansion.";
-		String[] categoryNames = config.getCategoryNames().toArray(new String[config.getCategoryNames().size()]);
-		for (int i = 0; i < categoryNames.length; i++) {
-			config.getCategory(categoryNames[i]).setLanguageKey(prefix + categoryNames[i]).setRequiresMcRestart(true);
-		}
-		categoryNames = configClient.getCategoryNames().toArray(new String[configClient.getCategoryNames().size()]);
-		for (int i = 0; i < categoryNames.length; i++) {
-			configClient.getCategory(categoryNames[i]).setLanguageKey(prefix + categoryNames[i]).setRequiresMcRestart(true);
-		}
-	}
-
-	@EventHandler
-	@SuppressWarnings("deprecation")
-	public void missingMappings(FMLMissingMappingsEvent e) {
-
-		List<MissingMapping> list = e.get();
-		if (list.size() > 0) {
-			for (MissingMapping mapping : list) {
-
-				String name = mapping.name;
-				if (name.indexOf(':') >= 0) {
-					name = name.substring(name.indexOf(':') + 1);
-				}
-				switch (mapping.type) {
-				case ITEM:
-					if (name.indexOf("tool.") != 0 && name.indexOf("armor.") != 0) {
-						break;
-					}
-					Item item = GameRegistry.findItem("ThermalFoundation", name);
-					if (item != null) {
-						mapping.remap(item);
-					} else {
-						mapping.warn();
-					}
-				default:
-					break;
-				}
-			}
-		}
-	}
-
-	/* BaseMod */
-	@Override
-	public String getModId() {
-
-		return modId;
-	}
-
-	@Override
-	public String getModName() {
-
-		return modName;
-	}
-
-	@Override
-	public String getModVersion() {
-
-		return version;
+		FurnaceManager.refreshRecipes();
+		PulverizerManager.refreshRecipes();
+		SawmillManager.refreshRecipes();
+		SmelterManager.refreshRecipes();
+		InsolatorManager.refreshRecipes();
+		ChargerManager.refreshRecipes();
+		CrucibleManager.refreshRecipes();
+		TransposerManager.refreshRecipes();
 	}
 
 }

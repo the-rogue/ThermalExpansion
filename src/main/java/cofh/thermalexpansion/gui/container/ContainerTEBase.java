@@ -2,16 +2,15 @@ package cofh.thermalexpansion.gui.container;
 
 import cofh.api.tileentity.IAugmentable;
 import cofh.core.block.TileCoFHBase;
-import cofh.core.gui.slot.SlotAugment;
 import cofh.lib.gui.container.ContainerBase;
 import cofh.lib.gui.container.IAugmentableContainer;
+import cofh.lib.gui.slot.SlotAugment;
 import cofh.lib.util.helpers.AugmentHelper;
 import cofh.lib.util.helpers.ServerHelper;
 import cofh.thermalexpansion.network.PacketTEBase;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.inventory.ICrafting;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
@@ -93,7 +92,7 @@ public class ContainerTEBase extends ContainerBase implements IAugmentableContai
 	@Override
 	public boolean canInteractWith(EntityPlayer player) {
 
-		return baseTile == null ? true : baseTile.isUseable(player);
+		return baseTile == null ? true : baseTile.isUsable(player);
 	}
 
 	@Override
@@ -105,7 +104,7 @@ public class ContainerTEBase extends ContainerBase implements IAugmentableContai
 			return;
 		}
 		for (int i = 0; i < crafters.size(); i++) {
-			baseTile.sendGuiNetworkData(this, (ICrafting) crafters.get(i));
+			baseTile.sendGuiNetworkData(this, crafters.get(i));
 		}
 	}
 
@@ -143,7 +142,7 @@ public class ContainerTEBase extends ContainerBase implements IAugmentableContai
 
 		augmentLock = lock;
 
-		if (ServerHelper.isClientWorld(baseTile.getWorldObj())) {
+		if (ServerHelper.isClientWorld(baseTile.getWorld())) {
 			PacketTEBase.sendTabAugmentPacketToServer(lock);
 		}
 	}

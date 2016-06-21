@@ -1,72 +1,60 @@
 package cofh.thermalexpansion.block.device;
 
-import cofh.core.render.IconRegistry;
-import cofh.lib.util.helpers.StringHelper;
-import cofh.thermalexpansion.ThermalExpansion;
+import cofh.lib.util.TimeTracker;
 import cofh.thermalexpansion.block.TileAugmentable;
-import cofh.thermalexpansion.block.device.BlockDevice.Types;
-import cofh.thermalexpansion.core.TEProps;
-import cpw.mods.fml.relauncher.Side;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.IIcon;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.fml.relauncher.Side;
 
 public abstract class TileDeviceBase extends TileAugmentable {
 
-	protected static final SideConfig[] defaultSideConfig = new SideConfig[BlockDevice.Types.values().length];
-	public static final boolean[] enableSecurity = new boolean[BlockDevice.Types.values().length];
+	protected static final SideConfig[] DEFAULT_SIDE_CONFIG = new SideConfig[BlockDevice.Type.values().length];
+	protected static final EnergyConfig[] DEFAULT_ENERGY_CONFIG = new EnergyConfig[BlockDevice.Type.values().length];
+	public static final boolean[] SECURITY = new boolean[BlockDevice.Type.values().length];
 
-	public static void configure() {
-
-		for (int i = 0; i < BlockDevice.Types.values().length; i++) {
-			String name = StringHelper.titleCase(BlockDevice.NAMES[i]);
-			String comment = "Enable this to allow for " + name + "s to be securable.";
-			enableSecurity[i] = ThermalExpansion.config.get("Security", "Device." + name + ".Securable", true, comment);
-		}
-		ThermalExpansion.config.removeProperty("Security", "Device." + StringHelper.titleCase(BlockDevice.NAMES[Types.WORKBENCH_FALSE.ordinal()])
-				+ ".Securable");
-		ThermalExpansion.config.removeProperty("Security", "Device." + StringHelper.titleCase(BlockDevice.NAMES[Types.PUMP.ordinal()]) + ".Securable");
-		ThermalExpansion.config.removeProperty("Security", "Device." + StringHelper.titleCase(BlockDevice.NAMES[Types.EXTENDER.ordinal()]) + ".Securable");
-	}
+	boolean wasActive;
 
 	protected final byte type;
+	protected EnergyConfig energyConfig;
+	protected TimeTracker tracker = new TimeTracker();
 
 	public TileDeviceBase() {
 
-		this(Types.BREAKER);
+		this(BlockDevice.Type.ACTIVATOR);
 		if (getClass() != TileDeviceBase.class) {
 			throw new IllegalArgumentException();
 		}
 	}
 
-	public TileDeviceBase(Types type) {
+	public TileDeviceBase(BlockDevice.Type type) {
 
 		this.type = (byte) type.ordinal();
 
-		sideConfig = defaultSideConfig[this.type];
+		sideConfig = DEFAULT_SIDE_CONFIG[this.type];
+		energyConfig = DEFAULT_ENERGY_CONFIG[this.type].copy();
+		//energyStorage = new EnergyStorage(energyConfig.maxEnergy, energyConfig.maxPower * ENERGY_TRANSFER[level]);
 		setDefaultSides();
-
-		augmentStatus = new boolean[4];
-		augments = new ItemStack[4];
-	}
-
-	@Override
-	public int getType() {
-
-		return type;
 	}
 
 	@Override
 	public String getName() {
 
-		return "tile.thermalexpansion.device." + BlockDevice.NAMES[getType()] + ".name";
+		return "tile.thermalexpansion.device." + BlockDevice.Type.byMetadata(type).getName() + ".name";
+	}
+
+	@Override
+	public int getLightValue() {
+
+		return isActive ? BlockDevice.Type.values()[type].getLight() : 0;
 	}
 
 	@Override
 	public boolean enableSecurity() {
 
-		return enableSecurity[getType()];
+		return SECURITY[type];
 	}
 
 	@Override
@@ -75,8 +63,21 @@ public abstract class TileDeviceBase extends TileAugmentable {
 		return true;
 	}
 
-	public void onEntityCollidedWithBlock(Entity entity) {
+	public void onEntityCollidedWithBlock() {
 
+	}
+
+	/* BLOCK STATE */
+	@Override
+	public IBlockState getExtendedState(IBlockState state, IBlockAccess world, BlockPos pos) {
+
+		// TODO: FIX
+		//		state = state.withProperty(BlockMachine.ACTIVE, isActive);
+		//		state = state.withProperty(BlockMachine.FACING, EnumFacing.VALUES[facing]);
+		//		for (int i = 0; i < 6; i++) {
+		//			state = state.withProperty(BlockMachine.SIDE_CONFIG[i], EnumSideConfig.VALUES[sideCache[i]]);
+		//		}
+		return state;
 	}
 
 	/* IReconfigurableFacing */
@@ -87,29 +88,22 @@ public abstract class TileDeviceBase extends TileAugmentable {
 	}
 
 	@Override
-	public boolean setFacing(int side) {
+	public boolean setFacing(EnumFacing side) {
 
-		if (side < 0 || side > 5) {
+		int sideInt = side.ordinal();
+
+		if (sideInt < 0 || sideInt > 5) {
 			return false;
 		}
-		facing = (byte) side;
+		if (!allowYAxisFacing() && sideInt < 2) {
+			return false;
+		}
+		facing = (byte) sideInt;
 		sideCache[facing] = 0;
 		sideCache[facing ^ 1] = 1;
 		markDirty();
 		sendUpdatePacket(Side.CLIENT);
 		return true;
-	}
-
-	/* ISidedTexture */
-	@Override
-	public IIcon getTexture(int side, int pass) {
-
-		if (pass == 0) {
-			return side != facing ? BlockDevice.deviceSide : redstoneControlOrDisable() ? BlockDevice.deviceActive[type] : BlockDevice.deviceFace[type];
-		} else if (side < 6) {
-			return IconRegistry.getIcon(TEProps.textureSelection, sideConfig.sideTex[sideCache[side]]);
-		}
-		return BlockDevice.deviceSide;
 	}
 
 }
